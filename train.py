@@ -41,6 +41,7 @@ seed_everything(SEED)
 DATA_ROOT_PATH = '../dataset'
 
 
+
 class TrainGlobalConfig:
     num_workers = 4
     batch_size = 26  # b2: 26
