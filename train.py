@@ -17,8 +17,11 @@ from albumentations.pytorch.transforms import ToTensorV2
 from torch.utils.data import Dataset,DataLoader
 from torch.utils.data.sampler import SequentialSampler, RandomSampler
 import sklearn
-import warnings
 
+from apex import amp
+import config as global_config
+
+import warnings
 warnings.filterwarnings("ignore")
 
 
@@ -35,15 +38,15 @@ def seed_everything(seed):
 
 seed_everything(SEED)
 
-DATA_ROOT_PATH = '../input/alaska2-image-steganalysis'
+DATA_ROOT_PATH = '../dataset'
 
 
 
 class TrainGlobalConfig:
     num_workers = 4
-    batch_size = 16 
+    batch_size = 26  # b2: 26
     n_epochs = 25
-    lr = 0.001
+    lr = 0.002  # 0.001
 
     # -------------------
     verbose = True
@@ -54,15 +57,15 @@ class TrainGlobalConfig:
     step_scheduler = False  # do scheduler.step after optimizer.step
     validation_scheduler = True  # do scheduler.step after validation stage loss
 
-#     SchedulerClass = torch.optim.lr_scheduler.OneCycleLR
-#     scheduler_params = dict(
-#         max_lr=0.001,
-#         epochs=n_epochs,
-#         steps_per_epoch=int(len(train_dataset) / batch_size),
-#         pct_start=0.1,
-#         anneal_strategy='cos', 
-#         final_div_factor=10**5
-#     )
+    # SchedulerClass = torch.optim.lr_scheduler.OneCycleLR
+    # scheduler_params = dict(
+    #     max_lr=0.001,
+    #     epochs=n_epochs,
+    #     steps_per_epoch=100,  # int(len(train_dataset) / batch_size)
+    #     pct_start=0.1,
+    #     anneal_strategy='cos', 
+    #     final_div_factor=10**5
+    # )
     
     SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
     scheduler_params = dict(
@@ -76,9 +79,7 @@ class TrainGlobalConfig:
         min_lr=1e-8,
         eps=1e-08
     )
-    # --------------------
-
-
+    # # --------------------
 
 # Metrics
 from sklearn import metrics
@@ -162,7 +163,7 @@ class RocAucMeter(object):
 dataset = []
 
 for label, kind in enumerate(['Cover', 'JMiPOD', 'JUNIWARD', 'UERD']):
-    for path in glob('../input/alaska2-image-steganalysis/Cover/*.jpg'):
+    for path in glob('../dataset/Cover/*.jpg'):
         dataset.append({
             'kind': kind,
             'image_name': path.split('/')[-1],
@@ -176,7 +177,10 @@ gkf = GroupKFold(n_splits=5)
 
 dataset.loc[:, 'fold'] = 0
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
+    # if fold_number < 5:
     dataset.loc[dataset.iloc[val_index].index, 'fold'] = fold_number
+    # else: 
+    #     break
 
 
 # Simple Augs: Flips
@@ -232,20 +236,28 @@ class DatasetRetriever(Dataset):
         return list(self.labels)
 
 
-
-fold_number = 0
+train_fold_num = 1
+val_fold_num = 0
 
 train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] != fold_number].kind.values,
-    image_names=dataset[dataset['fold'] != fold_number].image_name.values,
-    labels=dataset[dataset['fold'] != fold_number].label.values,
+    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+    labels=dataset[dataset['fold'] != val_fold_num].label.values,
     transforms=get_train_transforms(),
 )
 
+# train_dataset = DatasetRetriever(
+#     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
+#     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
+#     labels=dataset[dataset['fold'] == train_fold_num].label.values,
+#     transforms=get_train_transforms(),
+# )
+
+
 validation_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] == fold_number].kind.values,
-    image_names=dataset[dataset['fold'] == fold_number].image_name.values,
-    labels=dataset[dataset['fold'] == fold_number].label.values,
+    kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
+    image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
+    labels=dataset[dataset['fold'] == val_fold_num].label.values,
     transforms=get_valid_transforms()
 )
 
@@ -298,7 +310,7 @@ class Fitter:
         self.config = config
         self.epoch = 0
         
-        self.base_dir = './'
+        self.base_dir = './checkpoints'
         self.log_path = f'{self.base_dir}/log.txt'
         self.best_summary_loss = 10**5
 
@@ -312,8 +324,28 @@ class Fitter:
             {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ] 
 
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.lr)
-        self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+        if global_config.FP16:
+            from apex.optimizers import FusedAdam
+            # self.optimizer = FusedAdam(optimizer_grouped_parameters, lr=config.lr)
+
+            self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.lr)
+            self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+
+            # num_train_steps = int(self.steps * (global_config.EPOCHS))
+            # self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
+            #     self.optimizer,
+            #     num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
+            #     num_training_steps=num_train_steps,
+            #     num_cycles=2
+            # )
+
+            # APEX initialize -> FP16 training (half-precision)
+            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O1", verbosity=1)
+
+        else: 
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.lr)
+            self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+
         self.criterion = LabelSmoothing().to(self.device)
         self.log(f'Fitter prepared. Device is {self.device}')
 
@@ -365,7 +397,11 @@ class Fitter:
                 images = images.to(self.device).float()
                 outputs = self.model(images)
                 loss = self.criterion(outputs, targets)
-                final_scores.update(targets, outputs)
+                # print("outputs: ", list(outputs.data.cpu().numpy()))
+                try: 
+                    final_scores.update(targets, outputs)
+                except:
+                    pass
                 summary_loss.update(loss.detach().item(), batch_size)
 
         return summary_loss, final_scores
@@ -391,10 +427,20 @@ class Fitter:
             self.optimizer.zero_grad()
             outputs = self.model(images)
             loss = self.criterion(outputs, targets)
-            loss.backward()
-            
+
             final_scores.update(targets, outputs)
             summary_loss.update(loss.detach().item(), batch_size)
+
+
+            # APEX clip grad  # https://nvidia.github.io/apex/advanced.html#gradient-clipping
+            if global_config.FP16:
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()                # in apex, loss.backward() becomes
+                torch.nn.utils.clip_grad_norm_(amp.master_params(self.optimizer), max_norm=global_config.CLIP_GRAD_NORM)
+            else:
+                loss.backward()                         # compute and sum gradients on params
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=global_config.CLIP_GRAD_NORM) 
+
 
             self.optimizer.step()
 
@@ -434,12 +480,10 @@ from efficientnet_pytorch import EfficientNet
 
 def get_net():
     net = EfficientNet.from_pretrained('efficientnet-b2')
-    net._fc = nn.Linear(in_features=1408, out_features=4, bias=True)
+    net._fc = nn.Linear(in_features=1408, out_features=4, bias=True) # 1408 for b2 ; 1280 for b0
     return net
 
 net = get_net().cuda()
-
-
 
 
 
@@ -480,65 +524,65 @@ run_training()
 
 
 # Inference
-checkpoint = torch.load('../input/alaska2-public-baseline/best-checkpoint-033epoch.bin')
-net.load_state_dict(checkpoint['model_state_dict']);
-net.eval()
+# checkpoint = torch.load('../input/alaska2-public-baseline/best-checkpoint-033epoch.bin')
+# net.load_state_dict(checkpoint['model_state_dict']);
+# net.eval()
 
-print("Checkpoint Keys: ", checkpoint.keys())
-
-
-class DatasetSubmissionRetriever(Dataset):
-
-    def __init__(self, image_names, transforms=None):
-        super().__init__()
-        self.image_names = image_names
-        self.transforms = transforms
-
-    def __getitem__(self, index: int):
-        image_name = self.image_names[index]
-        image = cv2.imread(f'{DATA_ROOT_PATH}/Test/{image_name}', cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image /= 255.0
-        if self.transforms:
-            sample = {'image': image}
-            sample = self.transforms(**sample)
-            image = sample['image']
-
-        return image_name, image
-
-    def __len__(self) -> int:
-        return self.image_names.shape[0]
+# print("Checkpoint Keys: ", checkpoint.keys())
 
 
+# class DatasetSubmissionRetriever(Dataset):
 
-dataset = DatasetSubmissionRetriever(
-    image_names=np.array([path.split('/')[-1] for path in glob('../input/alaska2-image-steganalysis/Test/*.jpg')]),
-    transforms=get_valid_transforms(),
-)
+#     def __init__(self, image_names, transforms=None):
+#         super().__init__()
+#         self.image_names = image_names
+#         self.transforms = transforms
+
+#     def __getitem__(self, index: int):
+#         image_name = self.image_names[index]
+#         image = cv2.imread(f'{DATA_ROOT_PATH}/Test/{image_name}', cv2.IMREAD_COLOR)
+#         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+#         image /= 255.0
+#         if self.transforms:
+#             sample = {'image': image}
+#             sample = self.transforms(**sample)
+#             image = sample['image']
+
+#         return image_name, image
+
+#     def __len__(self) -> int:
+#         return self.image_names.shape[0]
 
 
-data_loader = DataLoader(
-    dataset,
-    batch_size=8,
-    shuffle=False,
-    num_workers=2,
-    drop_last=False,
-)
+
+# dataset = DatasetSubmissionRetriever(
+#     image_names=np.array([path.split('/')[-1] for path in glob('../dataset/Test/*.jpg')]),
+#     transforms=get_valid_transforms(),
+# )
 
 
-result = {'Id': [], 'Label': []}
-for step, (image_names, images) in enumerate(data_loader):
-    print(step, end='\r')
+# data_loader = DataLoader(
+#     dataset,
+#     batch_size=8,
+#     shuffle=False,
+#     num_workers=2,
+#     drop_last=False,
+# )
+
+
+# result = {'Id': [], 'Label': []}
+# for step, (image_names, images) in enumerate(data_loader):
+#     print(step, end='\r')
     
-    y_pred = net(images.cuda())
-    y_pred = 1 - nn.functional.softmax(y_pred, dim=1).data.cpu().numpy()[:,0]
+#     y_pred = net(images.cuda())
+#     y_pred = 1 - nn.functional.softmax(y_pred, dim=1).data.cpu().numpy()[:,0]
     
-    result['Id'].extend(image_names)
-    result['Label'].extend(y_pred)
+#     result['Id'].extend(image_names)
+#     result['Label'].extend(y_pred)
 
-submission = pd.DataFrame(result)
-submission.to_csv('submission.csv', index=False)
-submission.head()
+# submission = pd.DataFrame(result)
+# submission.to_csv('submission.csv', index=False)
+# submission.head()
 
 
 
