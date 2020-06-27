@@ -47,7 +47,7 @@ class EfficientNet_Model:
             self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.lr)
             # self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
 
-            num_train_steps = int(self.steps * (global_config.n_epochs) )
+            num_train_steps = int(self.steps * (global_config.n_epochs))
             self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
                 self.optimizer,
                 num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
