@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
-from efficientnet import Fitter
+from efficientnet import EfficientNet_Model
 
 
 SEED = 42
@@ -160,9 +160,10 @@ def run_training():
         pin_memory=False,
     )
 
-    fitter = Fitter(device=device, config=global_config)
-#     fitter.load(f'{fitter.base_dir}/last-checkpoint.bin')
-    fitter.fit(train_loader, val_loader)
+    print(f"\n>>> Total training examples: {len(train_loader) * global_config.batch_size}")
+    net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
+#     net.load(f'{net.base_dir}/last-checkpoint.bin')
+    net.fit(train_loader, val_loader)
 
 
 # Training 
