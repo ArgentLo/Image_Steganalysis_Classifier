@@ -110,7 +110,7 @@ class DatasetRetriever(Dataset):
         return list(self.labels)
 
 
-train_fold_num = 1
+train_fold_num = 1 
 val_fold_num = 0
 
 train_dataset = DatasetRetriever(
