@@ -167,7 +167,10 @@ class EfficientNet_Model:
             if self.config.step_scheduler:
                 self.scheduler.step()
 
-            final_scores.update(targets, outputs)
+            try: 
+                final_scores.update(targets, outputs)
+            except:
+                xm.master_print("outputs: ", list(outputs.data.cpu().numpy())[:10])
             summary_loss.update(loss.detach().item(), batch_size)
 
             if self.config.verbose:

@@ -183,6 +183,7 @@ def _mp_fn(rank, flags):
     if rank == 0:
         time.sleep(1)
 
+    torch.set_default_tensor_type('torch.FloatTensor')
     device = xm.xla_device()
     net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
 #     net.load(f'{net.base_dir}/last-checkpoint.bin')
