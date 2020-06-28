@@ -12,7 +12,7 @@ n_epochs = 10
 lr = 3e-3  # 1e-3
 
 verbose = True
-verbose_step = 10
+verbose_step = 2
 
 
 # -------------------

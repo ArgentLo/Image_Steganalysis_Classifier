@@ -55,8 +55,8 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=6)
-dataset.loc[:, 'fold'] = 100
+gkf = GroupKFold(n_splits=100)
+dataset.loc[:, 'fold'] = 42
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
     # if fold_number < 5:

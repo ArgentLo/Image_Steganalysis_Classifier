@@ -64,7 +64,7 @@ class EfficientNet_Model:
         )
 
         self.criterion = LabelSmoothing()
-        self.log(f'>>> Model is loaded. Device is {self.device}')
+        self.log(f'>>> Model is loaded. Main Device is {self.device}')
 
 
     def fit(self, train_loader, validation_loader):
