@@ -186,6 +186,9 @@ def _mp_fn(rank, flags):
     device = xm.xla_device()
     net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
 #     net.load(f'{net.base_dir}/last-checkpoint.bin')
+
+    xm.master_print(">>> Ready to fit Train Set...")
+
     net.fit(train_loader, val_loader)
 
 

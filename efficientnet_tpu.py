@@ -69,12 +69,16 @@ class EfficientNet_Model:
 
 
     def fit(self, train_loader, validation_loader):
+
         for e in range(self.config.n_epochs):
             
             ####### Training
             t = time.time()
 
             train_device_loader = pl.MpDeviceLoader(train_loader, self.device)
+
+            xm.master_print(">>> AFTER MpDeviceLoader TRAINSET.....")
+
             summary_loss, final_scores = self.train_one_epoch(train_device_loader)
 
             self.log(f'[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
@@ -131,14 +135,22 @@ class EfficientNet_Model:
         return summary_loss, final_scores
 
     def train_one_epoch(self, train_loader):
+
+        xm.master_print(">>> Start the first batch 0.....")
+
         self.model.train()
         summary_loss = AverageMeter()
         final_scores = RocAucMeter()
         t = time.time()
+
+        xm.master_print(">>> Start the first batch 1.....")
+
         for step, (images, targets) in enumerate(train_loader):
 
             t0 = time.time()
-          
+
+            xm.master_print(">>> Inside the first batch .....")
+
             targets = targets#.to(self.device).float()
             images = images#.to(self.device).float()
             batch_size = images.shape[0]
