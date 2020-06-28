@@ -117,9 +117,9 @@ class EfficientNet_Model:
                         f'time: {(time.time() - t):.5f}', end='\r'
                     )
             with torch.no_grad():
-                targets = targets.to(self.device).float()
+                targets = targets#.to(self.device).float()
                 batch_size = images.shape[0]
-                images = images.to(self.device).float()
+                images = images#.to(self.device).float()
                 outputs = self.model(images)
                 loss = self.criterion(outputs, targets)
                 try: 
@@ -139,8 +139,8 @@ class EfficientNet_Model:
 
             t0 = time.time()
           
-            targets = targets.to(self.device).float()
-            images = images.to(self.device).float()
+            targets = targets#.to(self.device).float()
+            images = images#.to(self.device).float()
             batch_size = images.shape[0]
 
             outputs = self.model(images)
