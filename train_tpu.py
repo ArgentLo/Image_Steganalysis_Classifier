@@ -145,13 +145,10 @@ validation_dataset = DatasetRetriever(
 )
 
 
-# Class Balance "on fly" from @CatalystTeam
-from catalyst.data.sampler import DistributedSamplerWrapper, BalanceClassSampler
-
 def _mp_fn(rank, flags):
 
-    train_sampler = DistributedSamplerWrapper(
-        sampler=BalanceClassSampler(labels=train_dataset.get_labels(), mode="downsampling"),
+    train_sampler = torch.utils.data.distributed.DistributedSampler(
+        train_dataset,
         num_replicas=xm.xrt_world_size(),
         rank=xm.get_ordinal(),
         shuffle=True
@@ -161,7 +158,6 @@ def _mp_fn(rank, flags):
         train_dataset,
         sampler=train_sampler,
         batch_size=global_config.batch_size,
-        pin_memory=False,
         drop_last=True,
         num_workers=global_config.num_workers,
     )
@@ -179,7 +175,6 @@ def _mp_fn(rank, flags):
         num_workers=global_config.num_workers,
         shuffle=False,
         sampler=val_sampler,
-        pin_memory=False,
         drop_last=False
     )
 
@@ -196,7 +191,7 @@ def _mp_fn(rank, flags):
 
 if __name__ == '__main__':
     torch.multiprocessing.freeze_support()
-    
+
     # Training 
     FLAGS={}
     xmp.spawn(_mp_fn, args=(FLAGS,), nprocs=8, start_method='fork')

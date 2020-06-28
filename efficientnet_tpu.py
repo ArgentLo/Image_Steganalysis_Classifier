@@ -39,8 +39,11 @@ class EfficientNet_Model:
         # get pretrained models
         self.model = EfficientNet.from_pretrained(global_config.EfficientNet_Level)
         self.model._fc = nn.Linear(in_features=global_config.EfficientNet_OutFeats, out_features=4, bias=True) 
+
+        print(">>> Model loaded!")
         self.model = self.model.to(device)
         self.device = device
+        print(">>> Model to XLA Devics!")
 
         param_optimizer = list(self.model.named_parameters())
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -49,8 +52,8 @@ class EfficientNet_Model:
             {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ] 
 
-
-        self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.lr*xm.xrt_world_size())
+        lr = config.lr*xm.xrt_world_size()
+        self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=lr)
         # self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
 
         num_train_steps = int(self.steps * (global_config.n_epochs))
@@ -71,8 +74,8 @@ class EfficientNet_Model:
             ####### Training
             t = time.time()
 
-            para_loader = pl.ParallelLoader(train_loader, [self.device])
-            summary_loss, final_scores = self.train_one_epoch(para_loader.per_device_loader(self.device))
+            train_device_loader = pl.MpDeviceLoader(train_loader, self.device)
+            summary_loss, final_scores = self.train_one_epoch(train_device_loader)
 
             self.log(f'[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
             self.save(f'{self.base_dir}/last-checkpoint.bin')
@@ -80,8 +83,8 @@ class EfficientNet_Model:
             ####### Validation
             t = time.time()
 
-            para_loader = pl.ParallelLoader(validation_loader, [self.device])
-            summary_loss, final_scores = self.validation(para_loader.per_device_loader(self.device))
+            val_device_loader = pl.MpDeviceLoader(validation_loader, self.device)
+            summary_loss, final_scores = self.validation(val_device_loader)
 
             self.log(f'[RESULT]: Val. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
             if summary_loss.avg < self.best_summary_loss:
