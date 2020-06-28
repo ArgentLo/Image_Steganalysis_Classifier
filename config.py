@@ -7,7 +7,7 @@ FP16 = True # using APEX fp16
 CLIP_GRAD_NORM  = 1
 
 num_workers = 4
-batch_size = 26
+batch_size = 16
 n_epochs = 10
 lr = 3e-3  # 1e-3
 
