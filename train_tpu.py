@@ -183,7 +183,7 @@ def _mp_fn(rank, flags):
         drop_last=False
     )
 
-    print(f"\n>>> Total training examples: {len(train_loader) * global_config.batch_size}")
+    xm.master_print(f"\n>>> Total training examples: {len(train_loader) * global_config.batch_size}")
 
     if rank == 0:
         time.sleep(1)
@@ -194,6 +194,9 @@ def _mp_fn(rank, flags):
     net.fit(train_loader, val_loader)
 
 
-# Training 
-FLAGS={}
-xmp.spawn(_mp_fn, args=(FLAGS,), nprocs=8, start_method='fork')
+if __name__ == '__main__':
+    torch.multiprocessing.freeze_support()
+    
+    # Training 
+    FLAGS={}
+    xmp.spawn(_mp_fn, args=(FLAGS,), nprocs=8, start_method='fork')
