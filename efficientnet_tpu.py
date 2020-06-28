@@ -40,10 +40,10 @@ class EfficientNet_Model:
         self.model = EfficientNet.from_pretrained(global_config.EfficientNet_Level)
         self.model._fc = nn.Linear(in_features=global_config.EfficientNet_OutFeats, out_features=4, bias=True) 
 
-        print(">>> Model loaded!")
-        self.model = self.model.to(device)
+        xm.master_print(">>> Model loaded!")
         self.device = device
-        print(">>> Model to XLA Devics!")
+        self.model = self.model.to(device)
+        xm.master_print(">>> Model to XLA Devics!")
 
         param_optimizer = list(self.model.named_parameters())
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -64,7 +64,7 @@ class EfficientNet_Model:
             num_cycles=0.5
         )
 
-        self.criterion = LabelSmoothing().to(self.device)
+        self.criterion = LabelSmoothing()
         self.log(f'>>> Model is loaded. Device is {self.device}')
 
 
