@@ -19,6 +19,7 @@ from torch.utils.data.sampler import SequentialSampler, RandomSampler
 import sklearn
 from apex import amp
 import warnings
+from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 
@@ -29,7 +30,6 @@ from efficientnet import EfficientNet_Model
 
 SEED = 42
 seed_everything(SEED)
-
 
 
 # GroupKFold splitting
@@ -47,18 +47,22 @@ for label, kind in enumerate(['Cover', 'JMiPOD', 'JUNIWARD', 'UERD']):
 random.shuffle(dataset)
 dataset = pd.DataFrame(dataset)
 
-gkf = GroupKFold(n_splits=5)
+##################################################################
+##################################################################
 
-dataset.loc[:, 'fold'] = 0
+gkf = GroupKFold(n_splits=6)
+dataset.loc[:, 'fold'] = 10
+
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
     # if fold_number < 5:
     dataset.loc[dataset.iloc[val_index].index, 'fold'] = fold_number
     # else: 
     #     break
 
+##################################################################
+##################################################################
 
 # Simple Augs: Flips
-
 def get_train_transforms():
     return A.Compose([
             A.HorizontalFlip(p=0.5),
@@ -110,22 +114,22 @@ class DatasetRetriever(Dataset):
         return list(self.labels)
 
 
-train_fold_num = 1 
-val_fold_num = 0
-
-train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] != val_fold_num].label.values,
-    transforms=get_train_transforms(),
-)
+val_fold_num = 4
+train_fold_num = 3 
 
 # train_dataset = DatasetRetriever(
-#     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
-#     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
-#     labels=dataset[dataset['fold'] == train_fold_num].label.values,
+#     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+#     image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+#     labels=dataset[dataset['fold'] != val_fold_num].label.values,
 #     transforms=get_train_transforms(),
 # )
+
+train_dataset = DatasetRetriever(
+    kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
+    image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
+    labels=dataset[dataset['fold'] == train_fold_num].label.values,
+    transforms=get_train_transforms(),
+)
 
 
 validation_dataset = DatasetRetriever(
@@ -168,69 +172,3 @@ def run_training():
 
 # Training 
 run_training()
-
-
-
-# Inference
-# checkpoint = torch.load('../input/alaska2-public-baseline/best-checkpoint-033epoch.bin')
-# net.load_state_dict(checkpoint['model_state_dict']);
-# net.eval()
-
-# print("Checkpoint Keys: ", checkpoint.keys())
-
-
-# class DatasetSubmissionRetriever(Dataset):
-
-#     def __init__(self, image_names, transforms=None):
-#         super().__init__()
-#         self.image_names = image_names
-#         self.transforms = transforms
-
-#     def __getitem__(self, index: int):
-#         image_name = self.image_names[index]
-#         image = cv2.imread(f'{global_config.DATA_ROOT_PATH}/Test/{image_name}', cv2.IMREAD_COLOR)
-#         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-#         image /= 255.0
-#         if self.transforms:
-#             sample = {'image': image}
-#             sample = self.transforms(**sample)
-#             image = sample['image']
-
-#         return image_name, image
-
-#     def __len__(self) -> int:
-#         return self.image_names.shape[0]
-
-
-
-# dataset = DatasetSubmissionRetriever(
-#     image_names=np.array([path.split('/')[-1] for path in glob('../dataset/Test/*.jpg')]),
-#     transforms=get_valid_transforms(),
-# )
-
-
-# data_loader = DataLoader(
-#     dataset,
-#     batch_size=8,
-#     shuffle=False,
-#     num_workers=2,
-#     drop_last=False,
-# )
-
-
-# result = {'Id': [], 'Label': []}
-# for step, (image_names, images) in enumerate(data_loader):
-#     print(step, end='\r')
-    
-#     y_pred = net(images.cuda())
-#     y_pred = 1 - nn.functional.softmax(y_pred, dim=1).data.cpu().numpy()[:,0]
-    
-#     result['Id'].extend(image_names)
-#     result['Label'].extend(y_pred)
-
-# submission = pd.DataFrame(result)
-# submission.to_csv('submission.csv', index=False)
-# submission.head()
-
-
-

@@ -8,8 +8,8 @@ CLIP_GRAD_NORM  = 1
 
 num_workers = 4
 batch_size = 26
-n_epochs = 25
-lr = 2e-3  # 1e-3
+n_epochs = 10
+lr = 3e-3  # 1e-3
 
 verbose = True
 verbose_step = 1

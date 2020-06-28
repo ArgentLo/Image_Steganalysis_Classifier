@@ -3,11 +3,13 @@ from torch import nn
 from datetime import datetime
 import time
 import os 
-import glob
+from glob import glob
 from efficientnet_pytorch import EfficientNet
 from transformers import get_cosine_with_hard_restarts_schedule_with_warmup
 from apex import amp
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
 
 
 from loss_fn import LabelSmoothing
@@ -84,6 +86,7 @@ class EfficientNet_Model:
                 self.model.eval()
                 self.save(f'{self.base_dir}/best-checkpoint-{str(self.epoch).zfill(3)}epoch.bin')
                 for path in sorted(glob(f'{self.base_dir}/best-checkpoint-*epoch.bin'))[:-3]:
+                    print("path: ", path)
                     os.remove(path)
 
             if self.config.validation_scheduler:
@@ -207,6 +210,7 @@ class EfficientNet_Model:
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         self.best_summary_loss = checkpoint['best_summary_loss']
         self.epoch = checkpoint['epoch'] + 1
+        self.model.eval()
         
     def log(self, message):
         if self.config.verbose:
