@@ -118,7 +118,7 @@ class EfficientNet_Model:
                     xm.master_print(
                         f'Val Step {step}/{len(val_loader)}, ' + \
                         f'summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, ' + \
-                        f'time: {(time.time() - t):.5f}', end='\r'
+                        f'time: {(time.time() - t):.5f}'
                     )
             with torch.no_grad():
                 targets = targets#.to(self.device).float()
@@ -179,7 +179,7 @@ class EfficientNet_Model:
                     t1 = time.time()
                     cur_lr = np.format_float_scientific(self.scheduler.get_last_lr()[0], unique=False, precision=1)
                     opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
-                    xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {cur_lr}/{opt_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m", end='\r')
+                    xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {cur_lr}/{opt_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m")
 
         return summary_loss, final_scores
     
