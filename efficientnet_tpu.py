@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 from datetime import datetime
 import time
 import os 
@@ -117,13 +118,13 @@ class EfficientNet_Model:
             ####### Training
             t = time.time()
 
+            xm.master_print("---" * 31)
             train_device_loader = pl.MpDeviceLoader(train_loader, self.device)
             summary_loss, final_scores = self.train_one_epoch(train_device_loader)
 
 
             effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
             head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1) 
-            xm.master_print("---" * 31)
             self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
             
             self.save(f'{self.base_dir}/last_ckpt.bin')
@@ -160,7 +161,7 @@ class EfficientNet_Model:
         t = time.time()
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
-                if step % self.config.verbose_step == 0:
+                if step % (self.config.verbose_step * 20) == 0:
                     xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
             with torch.no_grad():
