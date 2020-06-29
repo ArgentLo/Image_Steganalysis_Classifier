@@ -83,7 +83,7 @@ class EfficientNet_Model:
 
         # Try use different LR for HEAD and EffNet
         # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
-        lr = config.TPU_LR # * xm.xrt_world_size()
+        LR = config.TPU_LR # * xm.xrt_world_size()
         self.optimizer = torch.optim.AdamW([
                     {'params': self.model.efn.parameters(),       'lr': LR[0]},
                     {'params': self.model.fc1.parameters(),       'lr': LR[1]},
