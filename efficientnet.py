@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 from datetime import datetime
 import time
 import os 
@@ -17,6 +18,38 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 
 
+def GlobalAvgPooling(x):
+    return x.mean(axis=-1).mean(axis=-1)
+
+class Customized_ENSModel(nn.Module):
+    def __init__(self, EfficientNet_Level):
+        super(Customized_ENSModel, self).__init__()
+
+        self.efn = EfficientNet.from_pretrained(EfficientNet_Level)
+        self.avgpool   = GlobalAvgPooling
+        self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
+        self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
+
+        self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
+        self.bn2       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//4)
+        
+        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
+        
+    def forward(self, x):
+        x = self.efn.extract_features(x)
+        x = F.gelu(self.avgpool(x))
+        x = F.gelu(self.fc1(x))
+        x = self.bn1(x)  # bn after activation fn
+
+        x = F.gelu(self.fc2(x))
+        x = self.bn2(x)  # bn after activation fn
+
+        x = self.dense_out(x)
+
+        return x
+
+
+
 # EfficientNet
 class EfficientNet_Model:
     
@@ -29,9 +62,7 @@ class EfficientNet_Model:
         self.log_path = f'{self.base_dir}/log.txt'
         self.best_summary_loss = 10**5
 
-        # get pretrained models
-        self.model = EfficientNet.from_pretrained(global_config.EfficientNet_Level)
-        self.model._fc = nn.Linear(in_features=global_config.EfficientNet_OutFeats, out_features=4, bias=True) 
+        self.model = Customized_ENSModel(global_config.EfficientNet_Level)
         self.model = self.model.cuda()
         self.device = device
 
@@ -46,16 +77,30 @@ class EfficientNet_Model:
             # from apex.optimizers import FusedAdam
             # self.optimizer = FusedAdam(optimizer_grouped_parameters, lr=config.GPU_LR)
 
-            self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
-            # self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+            # Try use different LR for HEAD and EffNet
+            # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
+            LR = config.GPU_LR
+            self.optimizer = torch.optim.AdamW([
+                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
+                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
+                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                        {'params': self.model.fc2.parameters(),       'lr': LR[1]},
+                        {'params': self.model.bn2.parameters(),       'lr': LR[1]},
+                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
+                        ])
 
-            num_train_steps = int(self.steps * (global_config.GPU_EPOCH))
-            self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
-                self.optimizer,
-                num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
-                num_training_steps=num_train_steps,
-                num_cycles=0.5
-            )
+            ############################################## 
+            self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+
+            # num_train_steps = int(self.steps * (global_config.GPU_EPOCH))
+            # self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
+            #     self.optimizer,
+            #     num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
+            #     num_training_steps=num_train_steps,
+            #     num_cycles=0.5
+            # )
+
+            ############################################## 
 
             # APEX initialize -> FP16 training (half-precision)
             self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O1", verbosity=1)
@@ -73,17 +118,18 @@ class EfficientNet_Model:
 
             t = time.time()
             summary_loss, final_scores = self.train_one_epoch(train_loader)
-
-            opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+            
+            effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+            head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1) 
             print("---" * 31)
-            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 
             self.save(f'{self.base_dir}/last_ckpt.bin')
 
             t = time.time()
             summary_loss, final_scores = self.validation(validation_loader)
 
-            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
@@ -201,9 +247,9 @@ class EfficientNet_Model:
                 if step % self.config.verbose_step == 0:
 
                     t1 = time.time()
-                    cur_lr = np.format_float_scientific(self.scheduler.get_last_lr()[0], unique=False, precision=1)
-                    opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1) 
-                    print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {cur_lr}/{opt_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m", end='\r')
+                    effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+                    head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1) 
+                    print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {effNet_lr}/{head_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m", end='\r')
 
         return summary_loss, final_scores
     

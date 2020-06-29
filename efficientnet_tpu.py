@@ -80,7 +80,7 @@ class EfficientNet_Model:
             opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
             print("---" * 31)
             self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
-            
+
             self.save(f'{self.base_dir}/last_ckpt.bin')
 
             ####### Validation
@@ -188,6 +188,7 @@ class EfficientNet_Model:
 
     def load(self, path):
         checkpoint = torch.load(path)
+        print("Checkpoint Keys: ", checkpoint.keys())
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])

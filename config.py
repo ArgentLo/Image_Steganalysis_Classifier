@@ -2,19 +2,16 @@ import torch
 
 EfficientNet_Level = 'efficientnet-b2'
 
-SAVED_NAME = "test_2smoothing"
+SAVED_NAME = "Ext_HEAD_b2"
 
 CLIP_GRAD_NORM  = 1
-
-
-
 
 ########   GPU Apex Setting   ########
  
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 26
-GPU_EPOCH      = 10
-GPU_LR         = 3e-3  # 1e-3
+GPU_EPOCH      = 25
+GPU_LR         = [3e-4, 2e-3] # [EffNet, HEAD]
 
 
 ########   XLA TPU Setting   #########
@@ -41,21 +38,19 @@ num_workers = 8
 #     final_div_factor=10**5
 # )
 
-# SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
-# scheduler_params = dict(
-#     mode='min',
-#     factor=0.5,
-#     patience=1,
-#     verbose=False, 
-#     threshold=0.0001,
-#     threshold_mode='abs',
-#     cooldown=0, 
-#     min_lr=1e-8,
-#     eps=1e-08
-#     )
+SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
+scheduler_params = dict(
+    mode='min',
+    factor=0.7,
+    patience=0,
+    verbose=False, 
+    threshold=0.0001,
+    threshold_mode='abs',
+    min_lr=5e-9
+    )
 
-step_scheduler = True  # do scheduler.step after optimizer.step
-validation_scheduler = False  # do scheduler.step after validation stage loss
+step_scheduler = False  # do scheduler.step after optimizer.step
+validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
 

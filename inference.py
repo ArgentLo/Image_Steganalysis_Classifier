@@ -76,10 +76,7 @@ def run_inference():
     device = torch.device('cuda:0')
     net = EfficientNet_Model(device=device, config=global_config, steps=len(test_loader))
 
-    net.load("./checkpoints/last-checkpoint.bin")
-
-    checkpoint = torch.load("./checkpoints/last-checkpoint.bin")
-    print("Checkpoint Keys: ", checkpoint.keys())
+    net.load("./checkpoints/last_ckpt.bin")
 
     result = {'Id': [], 'Label': []}
     for step, (image_names, images) in enumerate(tqdm(test_loader)):        
