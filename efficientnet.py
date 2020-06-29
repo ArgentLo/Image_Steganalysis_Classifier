@@ -44,12 +44,12 @@ class EfficientNet_Model:
 
         if global_config.FP16:
             # from apex.optimizers import FusedAdam
-            # self.optimizer = FusedAdam(optimizer_grouped_parameters, lr=config.lr)
+            # self.optimizer = FusedAdam(optimizer_grouped_parameters, lr=config.GPU_LR)
 
-            self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.lr)
+            self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
             # self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
 
-            num_train_steps = int(self.steps * (global_config.n_epochs))
+            num_train_steps = int(self.steps * (global_config.GPU_EPOCH))
             self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
                 self.optimizer,
                 num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
@@ -61,7 +61,7 @@ class EfficientNet_Model:
             self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O1", verbosity=1)
 
         else: 
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.lr)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.GPU_LR)
             self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
 
         self.criterion = LabelSmoothing().to(self.device)
@@ -69,24 +69,29 @@ class EfficientNet_Model:
 
 
     def fit(self, train_loader, validation_loader):
-        for e in range(self.config.n_epochs):
+        for e in range(self.config.GPU_EPOCH):
 
             t = time.time()
             summary_loss, final_scores = self.train_one_epoch(train_loader)
 
-            self.log(f'[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
-            self.save(f'{self.base_dir}/last-checkpoint.bin')
+            opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+            print("---" * 31)
+            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+
+            self.save(f'{self.base_dir}/last_ckpt.bin')
 
             t = time.time()
             summary_loss, final_scores = self.validation(validation_loader)
 
-            self.log(f'[RESULT]: Val. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
+            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
                 self.model.eval()
-                self.save(f'{self.base_dir}/best-checkpoint-{str(self.epoch).zfill(3)}epoch.bin')
-                for path in sorted(glob(f'{self.base_dir}/best-checkpoint-*epoch.bin'))[:-3]:
-                    print("path: ", path)
+                self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.bin')
+
+                # keep only the best 3 checkpoints
+                for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
                     os.remove(path)
 
             if self.config.validation_scheduler:
@@ -105,11 +110,14 @@ class EfficientNet_Model:
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
                 if step % self.config.verbose_step == 0:
-                    print(
-                        f'Val Step {step}/{len(val_loader)}, ' + \
-                        f'summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, ' + \
-                        f'time: {(time.time() - t):.5f}', end='\r'
-                    )
+
+                    print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s", end='\r')
+
+                    # print(
+                    #     f'Val Step {step}/{len(val_loader)}, ' + \
+                    #     f'summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, ' + \
+                    #     f'time: {(time.time() - t):.5f}', end='\r'
+                    # )
             with torch.no_grad():
                 targets = targets.to(self.device).float()
                 batch_size = images.shape[0]
@@ -119,7 +127,8 @@ class EfficientNet_Model:
                 try: 
                     final_scores.update(targets, outputs)
                 except:
-                    print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                    # print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                    pass
                 summary_loss.update(loss.detach().item(), batch_size)
 
         return summary_loss, final_scores
@@ -180,7 +189,12 @@ class EfficientNet_Model:
                 if self.config.step_scheduler:
                     self.scheduler.step()
 
-            final_scores.update(targets, outputs)
+            try: 
+                final_scores.update(targets, outputs)
+            except:
+                # print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                pass
+
             summary_loss.update(loss.detach().item(), batch_size)
 
             if self.config.verbose:
@@ -188,7 +202,7 @@ class EfficientNet_Model:
 
                     t1 = time.time()
                     cur_lr = np.format_float_scientific(self.scheduler.get_last_lr()[0], unique=False, precision=1)
-                    opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+                    opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1) 
                     print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {cur_lr}/{opt_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m", end='\r')
 
         return summary_loss, final_scores

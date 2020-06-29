@@ -50,7 +50,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=6)
+gkf = GroupKFold(n_splits=300)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -149,7 +149,7 @@ def run_training():
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         sampler=BalanceClassSampler(labels=train_dataset.get_labels(), mode="downsampling"),
-        batch_size=global_config.batch_size,
+        batch_size=global_config.GPU_BATCH_SIZE,
         pin_memory=False,
         drop_last=True,
         num_workers=global_config.num_workers,
@@ -157,14 +157,14 @@ def run_training():
     
     val_loader = torch.utils.data.DataLoader(
         validation_dataset, 
-        batch_size=global_config.batch_size,
+        batch_size=global_config.GPU_BATCH_SIZE,
         num_workers=global_config.num_workers,
         shuffle=False,
         sampler=SequentialSampler(validation_dataset),
         pin_memory=False,
     )
 
-    print(f"\n>>> Total training examples: {len(train_loader) * global_config.batch_size}")
+    print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
     net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
 #     net.load(f'{net.base_dir}/last-checkpoint.bin')
     net.fit(train_loader, val_loader)

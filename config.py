@@ -2,18 +2,32 @@ import torch
 
 EfficientNet_Level = 'efficientnet-b2'
 
+SAVED_NAME = "test_2smoothing"
 
-FP16 = True # using APEX fp16
 CLIP_GRAD_NORM  = 1
 
-num_workers = 4
-batch_size = 16
-n_epochs = 10
-lr = 3e-3  # 1e-3
+
+
+
+########   GPU Apex Setting   ########
+ 
+FP16 = True # using APEX fp16
+GPU_BATCH_SIZE = 26
+GPU_EPOCH      = 10
+GPU_LR         = 3e-3  # 1e-3
+
+
+########   XLA TPU Setting   #########
+
+TPU_BATCH_SIZE = 26
+TPU_EPOCH      = 10
+TPU_LR         = 4e-4
+
+########   XLA TPU Setting   #########
 
 verbose = True
 verbose_step = 2
-
+num_workers = 8
 
 # -------------------
 
@@ -39,6 +53,7 @@ verbose_step = 2
 #     min_lr=1e-8,
 #     eps=1e-08
 #     )
+
 step_scheduler = True  # do scheduler.step after optimizer.step
 validation_scheduler = False  # do scheduler.step after validation stage loss
 

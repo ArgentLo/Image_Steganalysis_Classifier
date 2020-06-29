@@ -157,7 +157,7 @@ def _mp_fn(rank, flags):
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         sampler=train_sampler,
-        batch_size=global_config.batch_size,
+        batch_size=global_config.TPU_BATCH_SIZE,
         drop_last=True,
         num_workers=global_config.num_workers,
     )
@@ -171,14 +171,14 @@ def _mp_fn(rank, flags):
     
     val_loader = torch.utils.data.DataLoader(
         validation_dataset, 
-        batch_size=global_config.batch_size,
+        batch_size=global_config.TPU_BATCH_SIZE,
         num_workers=global_config.num_workers,
         shuffle=False,
         sampler=val_sampler,
         drop_last=False
     )
 
-    xm.master_print(f"\n>>> Total training examples: {len(train_loader) * global_config.batch_size}")
+    xm.master_print(f"\n>>> Total training examples: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
 
     if rank == 0:
         time.sleep(1)

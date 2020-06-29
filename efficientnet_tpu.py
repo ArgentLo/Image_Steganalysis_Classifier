@@ -51,11 +51,11 @@ class EfficientNet_Model:
             {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ] 
 
-        lr = config.lr*xm.xrt_world_size()
+        lr = config.TPU_LR # * xm.xrt_world_size()
         self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=lr)
         # self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
 
-        num_train_steps = int(self.steps * (global_config.n_epochs))
+        num_train_steps = int(self.steps * (global_config.TPU_EPOCH))
         self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
             self.optimizer,
             num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
@@ -69,7 +69,7 @@ class EfficientNet_Model:
 
     def fit(self, train_loader, validation_loader):
 
-        for e in range(self.config.n_epochs):
+        for e in range(self.config.TPU_EPOCH):
             
             ####### Training
             t = time.time()
@@ -77,8 +77,11 @@ class EfficientNet_Model:
             train_device_loader = pl.MpDeviceLoader(train_loader, self.device)
             summary_loss, final_scores = self.train_one_epoch(train_device_loader)
 
-            self.log(f'[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
-            self.save(f'{self.base_dir}/last-checkpoint.bin')
+            opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+            print("---" * 31)
+            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+            
+            self.save(f'{self.base_dir}/last_ckpt.bin')
 
             ####### Validation
             t = time.time()
@@ -86,12 +89,15 @@ class EfficientNet_Model:
             val_device_loader = pl.MpDeviceLoader(validation_loader, self.device)
             summary_loss, final_scores = self.validation(val_device_loader)
 
-            self.log(f'[RESULT]: Val. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, time: {(time.time() - t):.5f}')
+            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
                 self.model.eval()
-                self.save(f'{self.base_dir}/best-checkpoint-{str(self.epoch).zfill(3)}epoch.bin')
-                for path in sorted(glob(f'{self.base_dir}/best-checkpoint-*epoch.bin'))[:-3]:
+                self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.bin')
+
+                # keep only the best 3 checkpoints
+                for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
                     os.remove(path)
 
             if self.config.validation_scheduler:
@@ -110,11 +116,8 @@ class EfficientNet_Model:
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
                 if step % self.config.verbose_step == 0:
-                    xm.master_print(
-                        f'Val Step {step}/{len(val_loader)}, ' + \
-                        f'summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, ' + \
-                        f'time: {(time.time() - t):.5f}'
-                    )
+                    xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s", end='\r')
+
             with torch.no_grad():
                 targets = targets#.to(self.device).float()
                 batch_size = images.shape[0]
@@ -124,7 +127,8 @@ class EfficientNet_Model:
                 try: 
                     final_scores.update(targets, outputs)
                 except:
-                    xm.master_print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                    # xm.master_print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                    pass
                 summary_loss.update(loss.detach().item(), batch_size)
 
         return summary_loss, final_scores
@@ -158,7 +162,8 @@ class EfficientNet_Model:
             try: 
                 final_scores.update(targets, outputs)
             except:
-                xm.master_print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                # xm.master_print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                pass
             summary_loss.update(loss.detach().item(), batch_size)
 
             if self.config.verbose:
