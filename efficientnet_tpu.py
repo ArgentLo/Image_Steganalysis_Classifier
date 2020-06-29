@@ -24,6 +24,38 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 
 
+
+def GlobalAvgPooling(x):
+    return x.mean(axis=-1).mean(axis=-1)
+
+class Customized_ENSModel(nn.Module):
+    def __init__(self, EfficientNet_Level):
+        super(Customized_ENSModel, self).__init__()
+
+        self.efn = EfficientNet.from_pretrained(EfficientNet_Level)
+        self.avgpool   = GlobalAvgPooling
+        self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
+        self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
+
+        self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
+        self.bn2       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//4)
+        
+        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
+        
+    def forward(self, x):
+        x = self.efn.extract_features(x)
+        x = F.gelu(self.avgpool(x))
+        x = F.gelu(self.fc1(x))
+        x = self.bn1(x)  # bn after activation fn
+
+        x = F.gelu(self.fc2(x))
+        x = self.bn2(x)  # bn after activation fn
+
+        x = self.dense_out(x)
+
+        return x
+
+
 # EfficientNet
 class EfficientNet_Model:
     
@@ -37,9 +69,7 @@ class EfficientNet_Model:
         self.best_summary_loss = 10**5
 
         # get pretrained models
-        self.model = EfficientNet.from_pretrained(global_config.EfficientNet_Level)
-        self.model._fc = nn.Linear(in_features=global_config.EfficientNet_OutFeats, out_features=4, bias=True) 
-
+        self.model = Customized_ENSModel(global_config.EfficientNet_Level)
         xm.master_print(">>> Model loaded!")
         self.device = device
         self.model = self.model.to(device)
@@ -51,17 +81,30 @@ class EfficientNet_Model:
             {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ] 
 
+        # Try use different LR for HEAD and EffNet
+        # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
         lr = config.TPU_LR # * xm.xrt_world_size()
-        self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=lr)
-        # self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+        self.optimizer = torch.optim.AdamW([
+                    {'params': self.model.efn.parameters(),       'lr': LR[0]},
+                    {'params': self.model.fc1.parameters(),       'lr': LR[1]},
+                    {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                    {'params': self.model.fc2.parameters(),       'lr': LR[1]},
+                    {'params': self.model.bn2.parameters(),       'lr': LR[1]},
+                    {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
+                    ])
 
-        num_train_steps = int(self.steps * (global_config.TPU_EPOCH))
-        self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
-            self.optimizer,
-            num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
-            num_training_steps=num_train_steps,
-            num_cycles=0.5
-        )
+        ############################################## 
+        self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+
+        # num_train_steps = int(self.steps * (global_config.GPU_EPOCH))
+        # self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
+        #     self.optimizer,
+        #     num_warmup_steps=int(num_train_steps * 0.05), # WARMUP_PROPORTION = 0.1 as default
+        #     num_training_steps=num_train_steps,
+        #     num_cycles=0.5
+        # )
+
+        ############################################## 
 
         self.criterion = LabelSmoothing()
         self.log(f'>>> Model is loaded. Main Device is {self.device}')
@@ -77,10 +120,12 @@ class EfficientNet_Model:
             train_device_loader = pl.MpDeviceLoader(train_loader, self.device)
             summary_loss, final_scores = self.train_one_epoch(train_device_loader)
 
-            opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
-            print("---" * 31)
-            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
 
+            effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+            head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1) 
+            xm.master_print("---" * 31)
+            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
+            
             self.save(f'{self.base_dir}/last_ckpt.bin')
 
             ####### Validation
@@ -89,7 +134,7 @@ class EfficientNet_Model:
             val_device_loader = pl.MpDeviceLoader(validation_loader, self.device)
             summary_loss, final_scores = self.validation(val_device_loader)
 
-            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {opt_lr} | Time: {int((time.time() - t)//60)}m")
+            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
@@ -116,7 +161,7 @@ class EfficientNet_Model:
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
                 if step % self.config.verbose_step == 0:
-                    xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s", end='\r')
+                    xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
             with torch.no_grad():
                 targets = targets#.to(self.device).float()
@@ -170,9 +215,9 @@ class EfficientNet_Model:
                 if step % self.config.verbose_step == 0:
 
                     t1 = time.time()
-                    cur_lr = np.format_float_scientific(self.scheduler.get_last_lr()[0], unique=False, precision=1)
-                    opt_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
-                    xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {cur_lr}/{opt_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m")
+                    effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
+                    head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1)
+                    xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {effNet_lr}/{head_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m")
 
         return summary_loss, final_scores
     
@@ -188,7 +233,6 @@ class EfficientNet_Model:
 
     def load(self, path):
         checkpoint = torch.load(path)
-        print("Checkpoint Keys: ", checkpoint.keys())
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
