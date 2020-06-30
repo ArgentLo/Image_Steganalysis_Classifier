@@ -50,7 +50,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=8)
+gkf = GroupKFold(n_splits=5)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
