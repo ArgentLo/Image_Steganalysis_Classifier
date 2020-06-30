@@ -15,8 +15,8 @@ GPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 26
-TPU_EPOCH      = 10
+TPU_BATCH_SIZE = 20
+TPU_EPOCH      = 35
 TPU_LR         = [4e-4, 8e-4] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########

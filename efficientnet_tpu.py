@@ -116,9 +116,8 @@ class EfficientNet_Model:
         # Continue training proc -> Hand-tune LR 
         if global_config.CONTINUE_TRAIN:
 
-            self.model = self.model.to(self.device)
-
-            LR = [4e-5, 8e-5] # * xm.xrt_world_size()
+            LR = [7e-5, 1e-4] # * xm.xrt_world_size()
+            
             self.optimizer = torch.optim.AdamW([
                         {'params': self.model.efn.parameters(),       'lr': LR[0]},
                         {'params': self.model.fc1.parameters(),       'lr': LR[1]},
