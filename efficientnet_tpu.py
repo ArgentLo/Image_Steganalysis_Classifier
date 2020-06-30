@@ -113,6 +113,22 @@ class EfficientNet_Model:
 
     def fit(self, train_loader, validation_loader):
 
+        # Continue training proc -> Hand-tune LR 
+        if global_config.CONTINUE_TRAIN:
+
+            LR = [4e-5, 8e-5] # * xm.xrt_world_size()
+            self.optimizer = torch.optim.AdamW([
+                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
+                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
+                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                        {'params': self.model.fc2.parameters(),       'lr': LR[1]},
+                        {'params': self.model.bn2.parameters(),       'lr': LR[1]},
+                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
+                        ])
+
+            ############################################## 
+            self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+
         for e in range(self.config.TPU_EPOCH):
             
             ####### Training

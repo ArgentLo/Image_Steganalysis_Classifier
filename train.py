@@ -166,7 +166,12 @@ def run_training():
 
     print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
     net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
-#     net.load(f'{net.base_dir}/last-checkpoint.bin')
+
+    # Continue training proc
+    if global_config.CONTINUE_TRAIN:
+        net.load(global_config.CONTINUE_TRAIN)
+        print(">>> Loaded pretrained model to continue trianing!")
+
     net.fit(train_loader, val_loader)
 
 

@@ -114,6 +114,25 @@ class EfficientNet_Model:
 
 
     def fit(self, train_loader, validation_loader):
+
+        # Continue training proc -> Hand-tune LR 
+        if global_config.CONTINUE_TRAIN:
+
+            LR = [1e-4, 1.5e-4]
+
+            self.optimizer = torch.optim.AdamW([
+                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
+                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
+                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                        {'params': self.model.fc2.parameters(),       'lr': LR[1]},
+                        {'params': self.model.bn2.parameters(),       'lr': LR[1]},
+                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
+                        ])
+            ############################################## 
+            self.scheduler = global_config.SchedulerClass(self.optimizer, **global_config.scheduler_params)
+            # APEX initialize -> FP16 training (half-precision)
+            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O1", verbosity=1)
+
         for e in range(self.config.GPU_EPOCH):
 
             t = time.time()

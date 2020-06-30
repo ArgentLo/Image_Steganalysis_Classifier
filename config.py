@@ -11,17 +11,17 @@ CLIP_GRAD_NORM  = 1
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 26
 GPU_EPOCH      = 25
-GPU_LR         = [3e-4, 2e-3] # [EffNet, HEAD]
-
+GPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
 TPU_BATCH_SIZE = 26
 TPU_EPOCH      = 10
-TPU_LR         = [1e-4, 8e-4] # [EffNet, HEAD]
+TPU_LR         = [4e-4, 8e-4] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
+CONTINUE_TRAIN = "./checkpoints/last_ckpt.bin"
 verbose = True
 verbose_step = 2
 num_workers = 8
@@ -42,7 +42,7 @@ SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
 scheduler_params = dict(
     mode='min',
     factor=0.7,
-    patience=0,
+    patience=1,
     verbose=False, 
     threshold=0.0001,
     threshold_mode='abs',
