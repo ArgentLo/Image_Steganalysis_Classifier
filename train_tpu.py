@@ -24,6 +24,9 @@ import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
 
+os.environ['XLA_USE_BF16'] = "1"
+
+
 import warnings
 from tqdm import tqdm
 warnings.filterwarnings("ignore")
@@ -55,7 +58,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=8)
+gkf = GroupKFold(n_splits=5)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -159,7 +162,7 @@ def _mp_fn(rank, flags):
         sampler=train_sampler,
         batch_size=global_config.TPU_BATCH_SIZE,
         drop_last=True,
-        num_workers=global_config.num_workers,
+        num_workers=global_config.TPU_num_workers,
     )
 
     val_sampler = torch.utils.data.distributed.DistributedSampler(
@@ -172,7 +175,7 @@ def _mp_fn(rank, flags):
     val_loader = torch.utils.data.DataLoader(
         validation_dataset, 
         batch_size=global_config.TPU_BATCH_SIZE,
-        num_workers=global_config.num_workers,
+        num_workers=global_config.TPU_num_workers,
         shuffle=False,
         sampler=val_sampler,
         drop_last=False

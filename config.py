@@ -13,9 +13,9 @@ GPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 20
+TPU_BATCH_SIZE = 20  # max 20 for b2
 TPU_EPOCH      = 35
-TPU_LR         = [4e-4, 8e-4] # [EffNet, HEAD]
+TPU_LR         = [1e-4, 2e-4] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
@@ -50,7 +50,8 @@ step_scheduler = False  # do scheduler.step after optimizer.step
 validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
-num_workers = 8
+num_workers = 4
+TPU_num_workers = 0  # load data in the main process
 CLIP_GRAD_NORM  = 1
 
 # Endpoint features from EfficientNet
