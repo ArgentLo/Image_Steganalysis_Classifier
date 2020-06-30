@@ -118,7 +118,7 @@ class EfficientNet_Model:
         # Continue training proc -> Hand-tune LR 
         if global_config.CONTINUE_TRAIN:
 
-            LR = [1e-4, 1.5e-4]
+            LR = [7e-5, 9e-5]
 
             self.optimizer = torch.optim.AdamW([
                         {'params': self.model.efn.parameters(),       'lr': LR[0]},

@@ -116,6 +116,8 @@ class EfficientNet_Model:
         # Continue training proc -> Hand-tune LR 
         if global_config.CONTINUE_TRAIN:
 
+            self.model = self.model.to(self.device)
+
             LR = [4e-5, 8e-5] # * xm.xrt_world_size()
             self.optimizer = torch.optim.AdamW([
                         {'params': self.model.efn.parameters(),       'lr': LR[0]},
@@ -127,7 +129,7 @@ class EfficientNet_Model:
                         ])
 
             ############################################## 
-            self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+            self.scheduler = global_config.SchedulerClass(self.optimizer, **global_config.scheduler_params)
 
         for e in range(self.config.TPU_EPOCH):
             
@@ -249,7 +251,7 @@ class EfficientNet_Model:
         }, path)
 
     def load(self, path):
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, map_location=torch.device('cpu'))
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
