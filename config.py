@@ -1,16 +1,14 @@
 import torch
 
-EfficientNet_Level = 'efficientnet-b2'
+EfficientNet_Level = 'efficientnet-b7'
 
-SAVED_NAME = "Ext_HEAD_b2"
-
-CLIP_GRAD_NORM  = 1
+SAVED_NAME = "Singel_HEAD_b7"
 
 ########   GPU Apex Setting   ########
  
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 26
-GPU_EPOCH      = 25
+GPU_BATCH_SIZE = 32
+GPU_EPOCH      = 35
 GPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
@@ -21,10 +19,9 @@ TPU_LR         = [4e-4, 8e-4] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = "./checkpoints/last_ckpt.bin"
+CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.bin"
 verbose = True
 verbose_step = 2
-num_workers = 8
 
 # -------------------
 
@@ -53,6 +50,8 @@ step_scheduler = False  # do scheduler.step after optimizer.step
 validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
+num_workers = 8
+CLIP_GRAD_NORM  = 1
 
 # Endpoint features from EfficientNet
 EfficientNet_OutFeats = {
