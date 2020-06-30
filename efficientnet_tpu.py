@@ -25,7 +25,6 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 
 
-
 def GlobalAvgPooling(x):
     return x.mean(axis=-1).mean(axis=-1)
 
@@ -37,23 +36,14 @@ class Customized_ENSModel(nn.Module):
         self.avgpool   = GlobalAvgPooling
         self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
         self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
-
-        self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
-        self.bn2       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//4)
-        
-        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
+        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//2, 4)
         
     def forward(self, x):
         x = self.efn.extract_features(x)
         x = F.gelu(self.avgpool(x))
         x = F.gelu(self.fc1(x))
         x = self.bn1(x)  # bn after activation fn
-
-        x = F.gelu(self.fc2(x))
-        x = self.bn2(x)  # bn after activation fn
-
         x = self.dense_out(x)
-
         return x
 
 
@@ -89,8 +79,6 @@ class EfficientNet_Model:
                     {'params': self.model.efn.parameters(),       'lr': LR[0]},
                     {'params': self.model.fc1.parameters(),       'lr': LR[1]},
                     {'params': self.model.bn1.parameters(),       'lr': LR[1]},
-                    {'params': self.model.fc2.parameters(),       'lr': LR[1]},
-                    {'params': self.model.bn2.parameters(),       'lr': LR[1]},
                     {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
                     ])
 
@@ -117,13 +105,11 @@ class EfficientNet_Model:
         if global_config.CONTINUE_TRAIN:
 
             LR = [7e-5, 1e-4] # * xm.xrt_world_size()
-            
+
             self.optimizer = torch.optim.AdamW([
                         {'params': self.model.efn.parameters(),       'lr': LR[0]},
                         {'params': self.model.fc1.parameters(),       'lr': LR[1]},
                         {'params': self.model.bn1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.fc2.parameters(),       'lr': LR[1]},
-                        {'params': self.model.bn2.parameters(),       'lr': LR[1]},
                         {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
                         ])
 
