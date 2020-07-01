@@ -13,7 +13,7 @@ import torch_xla
 import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
-
+import torch_xla.utils.serialization as xser
 
 import numpy as np
 import warnings
@@ -36,13 +36,21 @@ class Customized_ENSModel(nn.Module):
         self.avgpool   = GlobalAvgPooling
         self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
         self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
-        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//2, 4)
+
+        self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
+        self.dropout   = nn.Dropout(0.3)
+
+        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
         
     def forward(self, x):
         x = self.efn.extract_features(x)
         x = F.gelu(self.avgpool(x))
         x = F.gelu(self.fc1(x))
         x = self.bn1(x)  # bn after activation fn
+
+        x = F.gelu(self.fc2(x))
+        x = self.dropout(x)  # bn after activation fn
+
         x = self.dense_out(x)
         return x
 
@@ -63,7 +71,13 @@ class EfficientNet_Model:
         self.model = Customized_ENSModel(global_config.EfficientNet_Level)
         xm.master_print(">>> Model loaded!")
         self.device = device
-        self.model = self.model.to(device)
+        # self.model = self.model.to(device)
+
+        self.criterion = LabelSmoothing()
+        self.log(f'>>> Model is loaded. Main Device is {self.device}')
+
+
+    def fit(self, train_loader, validation_loader):
 
         param_optimizer = list(self.model.named_parameters())
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -74,16 +88,19 @@ class EfficientNet_Model:
 
         # Try use different LR for HEAD and EffNet
         # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
-        LR = config.TPU_LR # * xm.xrt_world_size()
+        LR = self.config.TPU_LR
+        if global_config.CONTINUE_TRAIN: # Continue training proc -> Hand-tune LR 
+            LR = [7e-5, 1e-4]
         self.optimizer = torch.optim.AdamW([
                     {'params': self.model.efn.parameters(),       'lr': LR[0]},
                     {'params': self.model.fc1.parameters(),       'lr': LR[1]},
                     {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                    {'params': self.model.fc2.parameters(),       'lr': LR[1]},
                     {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
                     ])
 
         ############################################## 
-        self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
+        self.scheduler = self.config.SchedulerClass(self.optimizer, **self.config.scheduler_params)
 
         # num_train_steps = int(self.steps * (global_config.GPU_EPOCH))
         # self.scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
@@ -95,34 +112,13 @@ class EfficientNet_Model:
 
         ############################################## 
 
-        self.criterion = LabelSmoothing()
-        self.log(f'>>> Model is loaded. Main Device is {self.device}')
-
-
-    def fit(self, train_loader, validation_loader):
-
-        # Continue training proc -> Hand-tune LR 
-        if global_config.CONTINUE_TRAIN:
-
-            LR = [7e-5, 1e-4] # * xm.xrt_world_size()
-
-            self.optimizer = torch.optim.AdamW([
-                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
-                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
-                        ])
-
-            ############################################## 
-            self.scheduler = global_config.SchedulerClass(self.optimizer, **global_config.scheduler_params)
-
         for e in range(self.config.TPU_EPOCH):
             
             ####### Training
             t = time.time()
 
             xm.master_print("---" * 31)
-            train_device_loader = pl.MpDeviceLoader(train_loader, self.device)
+            train_device_loader = pl.MpDeviceLoader(train_loader, xm.xla_device())
             summary_loss, final_scores = self.train_one_epoch(train_device_loader)
 
 
@@ -135,7 +131,7 @@ class EfficientNet_Model:
             ####### Validation
             t = time.time()
 
-            val_device_loader = pl.MpDeviceLoader(validation_loader, self.device)
+            val_device_loader = pl.MpDeviceLoader(validation_loader, xm.xla_device())
             summary_loss, final_scores = self.validation(val_device_loader)
 
             self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
@@ -227,6 +223,13 @@ class EfficientNet_Model:
     
     def save(self, path):
         self.model.eval()
+        # xser.save({
+        #     'model_state_dict': self.model.state_dict(),
+        #     'optimizer_state_dict': self.optimizer.state_dict(),
+        #     'scheduler_state_dict': self.scheduler.state_dict(),
+        #     'best_summary_loss': self.best_summary_loss,
+        #     'epoch': self.epoch,
+        # }, path, master_only=True)
         xm.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
@@ -237,6 +240,7 @@ class EfficientNet_Model:
 
     def load(self, path):
         checkpoint = torch.load(path, map_location=torch.device('cpu'))
+        # checkpoint = xser.load(path)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])

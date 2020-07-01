@@ -122,8 +122,8 @@ class DatasetRetriever(Dataset):
         return list(self.labels)
 
 
-val_fold_num = 4
-train_fold_num = 3 
+val_fold_num = 0
+train_fold_num = 1
 
 train_dataset = DatasetRetriever(
     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
@@ -181,23 +181,35 @@ def _mp_fn(rank, flags):
         drop_last=False
     )
 
-    xm.master_print(f"\n>>> Total training examples: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
+    xm.master_print(f">>> Total training examples: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
 
     if rank == 0:
         time.sleep(1)
 
     torch.set_default_tensor_type('torch.FloatTensor')
     device = xm.xla_device()
-    net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
+    # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
 
-    # Continue training proc
-    if global_config.CONTINUE_TRAIN:
-        net.load(global_config.CONTINUE_TRAIN)
-        xm.master_print(">>> Loaded pretrained model to continue trianing!")
+    # # Continue training proc
+    # if global_config.CONTINUE_TRAIN:
+    #     net.load(global_config.CONTINUE_TRAIN)
+    #     xm.master_print(">>> Loaded pretrained model to continue trianing!")
 
-    xm.master_print(">>> Ready to fit Train Set...")
+    # xm.master_print(">>> Ready to fit Train Set...")
 
+    net.model = net.model.to(device)
     net.fit(train_loader, val_loader)
+
+
+net = EfficientNet_Model(device="DUMMY", config=global_config, steps=100)
+net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
+
+# Continue training proc
+if global_config.CONTINUE_TRAIN:
+    net.load(global_config.CONTINUE_TRAIN)
+    xm.master_print(">>> Loaded pretrained model to continue trianing!")
+
+xm.master_print(">>> Ready to fit Train Set...")
 
 
 if __name__ == '__main__':

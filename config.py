@@ -1,8 +1,8 @@
 import torch
 
-EfficientNet_Level = 'efficientnet-b7'
+EfficientNet_Level = 'efficientnet-b2'
 
-SAVED_NAME = "Singel_HEAD_b7"
+SAVED_NAME = "Ext_HEAD_b2"
 
 ########   GPU Apex Setting   ########
  
@@ -13,15 +13,15 @@ GPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 20  # max 20 for b2
+TPU_BATCH_SIZE = 36  # max 20 for b2
 TPU_EPOCH      = 35
-TPU_LR         = [1e-4, 2e-4] # [EffNet, HEAD]
+TPU_LR         = [3.5e-4, 3e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
 CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.bin"
 verbose = True
-verbose_step = 2
+verbose_step = 5
 
 # -------------------
 
@@ -37,13 +37,13 @@ verbose_step = 2
 
 SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
 scheduler_params = dict(
-    mode='min',
-    factor=0.7,
-    patience=1,
-    verbose=False, 
-    threshold=0.0001,
-    threshold_mode='abs',
-    min_lr=5e-9
+        mode='min',
+        factor=0.7,
+        patience=1,
+        verbose=False, 
+        threshold=0.0001,
+        threshold_mode='abs',
+        min_lr=5e-9
     )
 
 step_scheduler = False  # do scheduler.step after optimizer.step
@@ -52,7 +52,7 @@ validation_scheduler = True  # do scheduler.step after validation stage loss
 DATA_ROOT_PATH = '../dataset'
 num_workers = 4
 TPU_num_workers = 0  # load data in the main process
-CLIP_GRAD_NORM  = 1
+CLIP_GRAD_NORM  = 2e-3
 
 # Endpoint features from EfficientNet
 EfficientNet_OutFeats = {
