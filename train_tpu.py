@@ -58,7 +58,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=5)
+gkf = GroupKFold(n_splits=10)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -73,6 +73,7 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
 # Simple Augs: Flips
 def get_train_transforms():
     return A.Compose([
+            A.Normalize(always_apply=True, p=1.0),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Resize(height=512, width=512, p=1.0),
@@ -81,6 +82,7 @@ def get_train_transforms():
 
 def get_valid_transforms():
     return A.Compose([
+            A.Normalize(always_apply=True, p=1.0),
             A.Resize(height=512, width=512, p=1.0),
             ToTensorV2(p=1.0),
         ], p=1.0)
@@ -106,7 +108,7 @@ class DatasetRetriever(Dataset):
         kind, image_name, label = self.kinds[index], self.image_names[index], self.labels[index]
         image = cv2.imread(f'{global_config.DATA_ROOT_PATH}/{kind}/{image_name}', cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image /= 255.0
+        #image /= 255.0
         if self.transforms:
             sample = {'image': image}
             sample = self.transforms(**sample)
@@ -122,33 +124,38 @@ class DatasetRetriever(Dataset):
         return list(self.labels)
 
 
-val_fold_num = 0
-train_fold_num = 1
-
-train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] != val_fold_num].label.values,
-    transforms=get_train_transforms(),
-)
-
-# train_dataset = DatasetRetriever(
-#     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
-#     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
-#     labels=dataset[dataset['fold'] == train_fold_num].label.values,
-#     transforms=get_train_transforms(),
-# )
-
-
-validation_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] == val_fold_num].label.values,
-    transforms=get_valid_transforms()
-)
-
 
 def _mp_fn(rank, flags):
+
+
+    val_fold_num = 0
+    train_fold_num = 1
+
+    train_dataset = DatasetRetriever(
+        kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+        image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+        labels=dataset[dataset['fold'] != val_fold_num].label.values,
+        transforms=get_train_transforms(),
+    )
+
+    # train_dataset = DatasetRetriever(
+    #     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
+    #     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
+    #     labels=dataset[dataset['fold'] == train_fold_num].label.values,
+    #     transforms=get_train_transforms(),
+    # )
+
+
+    validation_dataset = DatasetRetriever(
+        kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
+        image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
+        labels=dataset[dataset['fold'] == val_fold_num].label.values,
+        transforms=get_valid_transforms()
+    )
+
+
+
+
 
     train_sampler = torch.utils.data.distributed.DistributedSampler(
         train_dataset,

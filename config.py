@@ -7,15 +7,15 @@ SAVED_NAME = "Ext_HEAD_b2"
 ########   GPU Apex Setting   ########
  
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 32
+GPU_BATCH_SIZE = 16
 GPU_EPOCH      = 35
-GPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
+GPU_LR         = [1e-1, 1e-1] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
 TPU_BATCH_SIZE = 16  # max 36 for b2
 TPU_EPOCH      = 35
-TPU_LR         = [1e-4, 1e-3] # [EffNet, HEAD]
+TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
