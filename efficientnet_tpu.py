@@ -38,7 +38,7 @@ class Customized_ENSModel(nn.Module):
         self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
 
         self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
-        self.dropout   = nn.Dropout(0.3)
+        self.dropout   = nn.Dropout(0.1)
 
         self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
         
