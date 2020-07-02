@@ -199,7 +199,7 @@ class EfficientNet_Model:
             self.optimizer.zero_grad()
             loss = self.criterion(outputs, targets)
             loss.backward()                         # compute and sum gradients on params
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=global_config.CLIP_GRAD_NORM) 
+            #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=global_config.CLIP_GRAD_NORM) 
 
             xm.optimizer_step(self.optimizer)
             if self.config.step_scheduler:
