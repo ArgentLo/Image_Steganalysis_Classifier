@@ -58,7 +58,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=10)
+gkf = GroupKFold(n_splits=5)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -167,7 +167,7 @@ def _mp_fn(rank, flags):
         sampler=train_sampler,
         batch_size=global_config.TPU_BATCH_SIZE,
         drop_last=True,
-        num_workers=2,
+        num_workers=global_config.TPU_num_workers,
     )
 
     # val_sampler = torch.utils.data.distributed.DistributedSampler(
