@@ -146,14 +146,12 @@ def _mp_fn(rank, flags):
     # )
 
 
-    validation_dataset = DatasetRetriever(
-        kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
-        image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
-        labels=dataset[dataset['fold'] == val_fold_num].label.values,
-        transforms=get_valid_transforms()
-    )
-
-
+    # validation_dataset = DatasetRetriever(
+    #     kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
+    #     image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
+    #     labels=dataset[dataset['fold'] == val_fold_num].label.values,
+    #     transforms=get_valid_transforms()
+    # )
 
 
 
@@ -169,24 +167,25 @@ def _mp_fn(rank, flags):
         sampler=train_sampler,
         batch_size=global_config.TPU_BATCH_SIZE,
         drop_last=True,
-        num_workers=global_config.TPU_num_workers,
+        num_workers=2,
     )
 
-    val_sampler = torch.utils.data.distributed.DistributedSampler(
-        validation_dataset,
-        num_replicas=xm.xrt_world_size(),
-        rank=xm.get_ordinal(),
-        shuffle=False
-    )
+    # val_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     validation_dataset,
+    #     num_replicas=xm.xrt_world_size(),
+    #     rank=xm.get_ordinal(),
+    #     shuffle=False
+    # )
     
-    val_loader = torch.utils.data.DataLoader(
-        validation_dataset, 
-        batch_size=global_config.TPU_BATCH_SIZE,
-        num_workers=global_config.TPU_num_workers,
-        shuffle=False,
-        sampler=val_sampler,
-        drop_last=False
-    )
+    # val_loader = torch.utils.data.DataLoader(
+    #     validation_dataset, 
+    #     batch_size=global_config.TPU_BATCH_SIZE,
+    #     num_workers=1,
+    #     shuffle=False,
+    #     sampler=val_sampler,
+    #     drop_last=False
+    # )
+    val_loader = 1
 
     xm.master_print(f">>> Total training examples: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
 

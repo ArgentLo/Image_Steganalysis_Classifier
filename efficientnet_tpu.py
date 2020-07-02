@@ -131,8 +131,9 @@ class EfficientNet_Model:
             ####### Validation
             t = time.time()
 
-            val_device_loader = pl.MpDeviceLoader(validation_loader, xm.xla_device())
-            summary_loss, final_scores = self.validation(val_device_loader)
+            # Skip Validation
+            # val_device_loader = pl.MpDeviceLoader(validation_loader, xm.xla_device())
+            # summary_loss, final_scores = self.validation(val_device_loader)
 
             self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 

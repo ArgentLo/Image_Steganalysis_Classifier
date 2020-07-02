@@ -5,7 +5,7 @@ EfficientNet_Level = 'efficientnet-b2'
 SAVED_NAME = "Ext_HEAD_b2"
 
 ########   GPU Apex Setting   ########
- 
+
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 16
 GPU_EPOCH      = 35
@@ -13,9 +13,9 @@ GPU_LR         = [1e-1, 1e-1] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 16  # max 36 for b2
+TPU_BATCH_SIZE = 6 * 8  # max 36 for b2
 TPU_EPOCH      = 35
-TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD]
+TPU_LR         = [1e-3, 2e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
@@ -31,7 +31,7 @@ verbose_step = 5
 #     epochs=n_epochs,
 #     steps_per_epoch=100,  # int(len(train_dataset) / batch_size)
 #     pct_start=0.1,
-#     anneal_strategy='cos', 
+#     anneal_strategy='cos',
 #     final_div_factor=10**5
 # )
 
@@ -40,7 +40,7 @@ scheduler_params = dict(
         mode='min',
         factor=0.7,
         patience=1,
-        verbose=False, 
+        verbose=False,
         threshold=0.0001,
         threshold_mode='abs',
         min_lr=5e-9
