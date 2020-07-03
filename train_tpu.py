@@ -215,7 +215,7 @@ net = EfficientNet_Model(device="DUMMY", config=global_config, steps=100)
 # Continue training proc
 if global_config.CONTINUE_TRAIN:
     net.load(global_config.CONTINUE_TRAIN)
-    xm.master_print(">>> Loaded pretrained model to continue trianing!")
+    xm.master_print(f">>> {global_config.CONTINUE_TRAIN} is LOADED for resuming trianing!")
 
 net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
 
