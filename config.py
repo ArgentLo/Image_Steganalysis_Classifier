@@ -2,9 +2,9 @@ import torch
 
 EfficientNet_Level = 'efficientnet-b2'
 
-SAVED_NAME = "Ext_HEAD_b2"
+SAVED_NAME = "Alex_b2"
 
-LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
+LOSS_FN_LabelSmoothing = True # LabelSmoothing -> onehot; crossEnt: class_label
 
 ########   GPU Apex Setting   ########
 
@@ -16,12 +16,12 @@ GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 ########   XLA TPU Setting   #########
 
 TPU_BATCH_SIZE = 16 * 8  # max 36 for b2
-TPU_EPOCH      = 35
-TPU_LR         = [3e-5, 3e-5] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_EPOCH      = 40
+TPU_LR         = [2e-3, 2e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = "./checkpoints/last_ckpt.bin"
+CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.bin"
 verbose = True
 verbose_step = 10
 

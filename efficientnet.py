@@ -21,48 +21,31 @@ import config as global_config
 def GlobalAvgPooling(x):
     return x.mean(axis=-1).mean(axis=-1)
 
-# class Customized_ENSModel(nn.Module):
-#     def __init__(self, EfficientNet_Level):
-#         super(Customized_ENSModel, self).__init__()
-
-#         self.efn = EfficientNet.from_pretrained(EfficientNet_Level)
-#         self.avgpool   = GlobalAvgPooling
-#         self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
-#         self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
-#         self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//2, 4)
-        
-#     def forward(self, x):
-#         x = self.efn.extract_features(x)
-#         x = F.gelu(self.avgpool(x))
-#         x = F.gelu(self.fc1(x))
-#         x = self.bn1(x)  # bn after activation fn
-#         x = self.dense_out(x)
-
 class Customized_ENSModel(nn.Module):
     def __init__(self, EfficientNet_Level):
         super(Customized_ENSModel, self).__init__()
 
         self.efn = EfficientNet.from_pretrained(EfficientNet_Level)
-        self.avgpool   = GlobalAvgPooling
-        self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
-        self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
+        self.efn._fc = nn.Linear(in_features=global_config.EfficientNet_OutFeats, 
+                                 out_features=4, bias=True)
 
-        self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
-        self.bn2       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//4)
-
-        self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
+        # self.avgpool   = GlobalAvgPooling
+        # self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
+        # self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
+        # self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
+        # self.bn2       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//4)
+        # self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
         
     def forward(self, x):
-        x = self.efn.extract_features(x)
-        x = F.gelu(self.avgpool(x))
-        x = F.gelu(self.fc1(x))
-        x = self.bn1(x)  # bn after activation fn
-
-        x = F.gelu(self.fc2(x))
-        x = self.bn2(x)  # bn after activation fn
-
-        x = self.dense_out(x)
-        return x
+        # x = self.efn.extract_features(x)
+        # x = F.gelu(self.avgpool(x))
+        # x = F.gelu(self.fc1(x))
+        # x = self.bn1(x)  # bn after activation fn
+        # x = F.gelu(self.fc2(x))
+        # x = self.bn2(x)  # bn after activation fn
+        # x = self.dense_out(x)
+        # return x
+        return self.efn(x)
 
 
 # EfficientNet
@@ -97,11 +80,11 @@ class EfficientNet_Model:
             LR = config.GPU_LR
             self.optimizer = torch.optim.AdamW([
                         {'params': self.model.efn.parameters(),       'lr': LR[0]},
-                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.fc2.parameters(),       'lr': LR[1]},
-                        {'params': self.model.bn2.parameters(),       'lr': LR[1]},
-                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
+                        # {'params': self.model.fc1.parameters(),       'lr': LR[1]},
+                        # {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                        # {'params': self.model.fc2.parameters(),       'lr': LR[1]},
+                        # {'params': self.model.bn2.parameters(),       'lr': LR[1]},
+                        # {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
                         ])
 
             ############################################## 
@@ -156,7 +139,7 @@ class EfficientNet_Model:
             summary_loss, final_scores = self.train_one_epoch(train_loader)
             
             effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
-            head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1) 
+            head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1) 
             print("---" * 31)
             self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 
@@ -281,7 +264,7 @@ class EfficientNet_Model:
 
                     t1 = time.time()
                     effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
-                    head_lr   = np.format_float_scientific(self.optimizer.param_groups[1]['lr'], unique=False, precision=1) 
+                    head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1) 
                     print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {effNet_lr}/{head_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m", end='\r')
 
         return summary_loss, final_scores

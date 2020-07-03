@@ -50,7 +50,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=5)
+gkf = GroupKFold(n_splits=200)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -119,22 +119,22 @@ class DatasetRetriever(Dataset):
         return list(self.labels)
 
 
-val_fold_num = 4
-train_fold_num = 3 
-
-train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] != val_fold_num].label.values,
-    transforms=get_train_transforms(),
-)
+val_fold_num = 0
+train_fold_num = 1
 
 # train_dataset = DatasetRetriever(
-#     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
-#     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
-#     labels=dataset[dataset['fold'] == train_fold_num].label.values,
+#     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+#     image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+#     labels=dataset[dataset['fold'] != val_fold_num].label.values,
 #     transforms=get_train_transforms(),
 # )
+
+train_dataset = DatasetRetriever(
+    kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
+    image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
+    labels=dataset[dataset['fold'] == train_fold_num].label.values,
+    transforms=get_train_transforms(),
+)
 
 
 validation_dataset = DatasetRetriever(
