@@ -1,3 +1,8 @@
+
+
+
+
+
 from glob import glob
 from sklearn.model_selection import GroupKFold
 import cv2
@@ -17,7 +22,12 @@ from albumentations.pytorch.transforms import ToTensorV2
 from torch.utils.data import Dataset,DataLoader
 from torch.utils.data.sampler import SequentialSampler, RandomSampler
 import sklearn
-from apex import amp
+# from apex import amp
+import torch_xla
+import torch_xla.core.xla_model as xm
+import torch_xla.distributed.parallel_loader as pl
+import torch_xla.distributed.xla_multiprocessing as xmp
+
 import warnings
 from tqdm import tqdm
 warnings.filterwarnings("ignore")
@@ -25,18 +35,18 @@ warnings.filterwarnings("ignore")
 
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
-from efficientnet import EfficientNet_Model
+from efficientnet_tpu import EfficientNet_Model
 
 
 # Inference
 def run_inference():
-    
+
     def get_valid_transforms():
         return A.Compose([
                 A.Resize(height=512, width=512, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.0)
-            
+
     class DatasetSubmissionRetriever(Dataset):
 
         def __init__(self, image_names, transforms=None):
@@ -73,21 +83,24 @@ def run_inference():
         drop_last=False,
     )
 
-    device = torch.device('cuda:0')
-    net = EfficientNet_Model(device=device, config=global_config, steps=len(test_loader))
+    #device = torch.device('cuda:0')
+    device = xm.xla_device()
+    net = EfficientNet_Model(device="device", config=global_config, steps=100)
+    net.model = net.model.to(device)
 
-    net.load("./checkpoints/last_ckpt.bin")
+    net.load("./checkpoints/Alex_b2_025ep.bin")
 
     result = {'Id': [], 'Label': []}
-    for step, (image_names, images) in enumerate(tqdm(test_loader)):        
-        y_pred = net.model(images.cuda())
+    for step, (image_names, images) in enumerate(tqdm(test_loader)):
+        #y_pred = net.model(images.cuda())
+        y_pred = net.model(images.to(device))
         y_pred = 1 - nn.functional.softmax(y_pred, dim=1).data.cpu().numpy()[:,0]
-        
+
         result['Id'].extend(image_names)
         result['Label'].extend(y_pred)
 
     submission = pd.DataFrame(result)
-    submission.to_csv('./node_submissions/test_tpu_8420.csv', index=False)
+    submission.to_csv('./node_submissions/submission.csv', index=False)
     submission.head()
 
 run_inference()
