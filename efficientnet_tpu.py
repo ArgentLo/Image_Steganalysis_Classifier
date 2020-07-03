@@ -93,7 +93,7 @@ class EfficientNet_Model:
         # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
         LR = self.config.TPU_LR
         if global_config.CONTINUE_TRAIN: # Continue training proc -> Hand-tune LR 
-            LR = [9e-4, 1e-3]
+            LR = self.config.TPU_LR # [9e-4, 1e-3]
         self.optimizer = torch.optim.AdamW([
                     {'params': self.model.efn.parameters(),       'lr': LR[0]},
                     {'params': self.model.fc1.parameters(),       'lr': LR[1]},
