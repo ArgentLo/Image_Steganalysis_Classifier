@@ -244,10 +244,10 @@ class EfficientNet_Model:
         checkpoint = torch.load(path, map_location=torch.device('cpu'))
         # checkpoint = xser.load(path)
         self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-        self.best_summary_loss = checkpoint['best_summary_loss']
-        self.epoch = checkpoint['epoch'] + 1
+        # self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        # self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        # self.best_summary_loss = checkpoint['best_summary_loss']
+        # self.epoch = checkpoint['epoch'] + 1
         self.model.eval()
         
     def log(self, message):

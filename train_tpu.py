@@ -211,12 +211,13 @@ def _mp_fn(rank, flags):
 
 
 net = EfficientNet_Model(device="DUMMY", config=global_config, steps=100)
-net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
 
 # Continue training proc
 if global_config.CONTINUE_TRAIN:
     net.load(global_config.CONTINUE_TRAIN)
     xm.master_print(">>> Loaded pretrained model to continue trianing!")
+
+net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
 
 xm.master_print(">>> Ready to fit Train Set...")
 
