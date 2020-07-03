@@ -73,7 +73,10 @@ class EfficientNet_Model:
         self.device = device
         # self.model = self.model.to(device)
 
-        self.criterion = LabelSmoothing()
+        if global_config.LOSS_FN_LabelSmoothing:
+            self.criterion = LabelSmoothing()
+        else: 
+            self.criterion = torch.nn.CrossEntropyLoss()
         self.log(f'>>> Model is loaded. Main Device is {self.device}')
 
 
@@ -90,7 +93,7 @@ class EfficientNet_Model:
         # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
         LR = self.config.TPU_LR
         if global_config.CONTINUE_TRAIN: # Continue training proc -> Hand-tune LR 
-            LR = [7e-5, 1e-4]
+            LR = [9e-4, 1e-3]
         self.optimizer = torch.optim.AdamW([
                     {'params': self.model.efn.parameters(),       'lr': LR[0]},
                     {'params': self.model.fc1.parameters(),       'lr': LR[1]},
@@ -143,8 +146,8 @@ class EfficientNet_Model:
                 self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.bin')
 
                 # keep only the best 3 checkpoints
-                for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
-                    os.remove(path)
+                # for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
+                #     os.remove(path)
 
             if self.config.validation_scheduler:
                 try:
@@ -165,9 +168,9 @@ class EfficientNet_Model:
                     xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
             with torch.no_grad():
-                targets = targets#.to(self.device).float()
+                targets = targets
                 batch_size = images.shape[0]
-                images = images#.to(self.device).float()
+                images = images
                 outputs = self.model(images)
                 loss = self.criterion(outputs, targets)
                 try: 
@@ -189,12 +192,10 @@ class EfficientNet_Model:
         for step, (images, targets) in enumerate(train_loader):
 
             t0 = time.time()
-            targets = targets#.to(self.device).float()
-            images = images#.to(self.device).float()
+            targets = targets
+            images = images
             batch_size = images.shape[0]
-
             outputs = self.model(images)
-
 
             self.optimizer.zero_grad()
             loss = self.criterion(outputs, targets)

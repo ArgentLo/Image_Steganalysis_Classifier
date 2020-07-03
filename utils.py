@@ -4,7 +4,7 @@ from torch import nn
 import random
 import numpy as np
 from sklearn import metrics
-
+import config as global_config
 
 
 def seed_everything(seed):
@@ -79,7 +79,11 @@ class RocAucMeter(object):
         self.score = 0
 
     def update(self, y_true, y_pred):
-        y_true = y_true.cpu().numpy().argmax(axis=1).clip(min=0, max=1).astype(int)
+        if global_config.LOSS_FN_LabelSmoothing:
+            y_true = y_true.cpu().numpy().argmax(axis=1).clip(min=0, max=1).astype(int)
+        else:
+            y_true = y_true.cpu().numpy().clip(min=0, max=1).astype(int)
+
         y_pred = 1 - nn.functional.softmax(y_pred, dim=1).data.cpu().numpy()[:,0]
         self.y_true = np.hstack((self.y_true, y_true))
         self.y_pred = np.hstack((self.y_pred, y_pred))

@@ -114,7 +114,10 @@ class DatasetRetriever(Dataset):
             sample = self.transforms(**sample)
             image = sample['image']
             
-        target = onehot(4, label)
+        if global_config.LOSS_FN_LabelSmoothing:
+            target = onehot(4, label)
+        else: 
+            target = label
         return image, target
 
     def __len__(self) -> int:

@@ -124,7 +124,11 @@ class EfficientNet_Model:
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.GPU_LR)
             self.scheduler = config.SchedulerClass(self.optimizer, **config.scheduler_params)
 
-        self.criterion = LabelSmoothing().to(self.device)
+        if global_config.LOSS_FN_LabelSmoothing:
+            self.criterion = LabelSmoothing().to(self.device)
+        else: 
+            self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
+
         self.log(f'>>> Model is loaded. Device is {self.device}')
 
 
@@ -169,8 +173,8 @@ class EfficientNet_Model:
                 self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.bin')
 
                 # keep only the best 3 checkpoints
-                for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
-                    os.remove(path)
+                # for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
+                #     os.remove(path)
 
             if self.config.validation_scheduler:
                 try:
@@ -197,7 +201,7 @@ class EfficientNet_Model:
                     #     f'time: {(time.time() - t):.5f}', end='\r'
                     # )
             with torch.no_grad():
-                targets = targets.to(self.device).float()
+                targets = targets.to(self.device)
                 batch_size = images.shape[0]
                 images = images.to(self.device).float()
                 outputs = self.model(images)
@@ -219,13 +223,10 @@ class EfficientNet_Model:
         for step, (images, targets) in enumerate(train_loader):
 
             t0 = time.time()
-          
-            targets = targets.to(self.device).float()
+            targets = targets.to(self.device)
             images = images.to(self.device).float()
             batch_size = images.shape[0]
-
             outputs = self.model(images)
-
 
             if global_config.ACCUMULATION_STEP > 1:
                 loss = self.criterion(outputs, targets)

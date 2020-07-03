@@ -4,12 +4,14 @@ EfficientNet_Level = 'efficientnet-b2'
 
 SAVED_NAME = "Ext_HEAD_b2"
 
+LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
+
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 16
 GPU_EPOCH      = 35
-GPU_LR         = [1e-1, 1e-1] # [EffNet, HEAD]
+GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
@@ -19,7 +21,7 @@ TPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.bin"
+CONTINUE_TRAIN = "./checkpoints/Ext_HEAD_b2_004ep.bin"
 verbose = True
 verbose_step = 5
 
@@ -38,8 +40,8 @@ verbose_step = 5
 SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
 scheduler_params = dict(
         mode='min',
-        factor=0.75,
-        patience=0,
+        factor=0.5,
+        patience=1,
         verbose=False,
         threshold=0.0001,
         threshold_mode='abs',
@@ -51,7 +53,7 @@ validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
 num_workers = 4
-TPU_num_workers = 8  # load data in the main process
+TPU_num_workers = 4  # load data in the main process
 CLIP_GRAD_NORM  = 1e-3
 
 # Endpoint features from EfficientNet
