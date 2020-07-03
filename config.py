@@ -17,11 +17,11 @@ GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 TPU_BATCH_SIZE = 16 * 8  # max 36 for b2
 TPU_EPOCH      = 40
-TPU_LR         = [2e-3, 2e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.bin"
+CONTINUE_TRAIN = "./checkpoints/last_ckpt.bin"
 verbose = True
 verbose_step = 10
 
