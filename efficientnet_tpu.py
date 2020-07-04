@@ -17,6 +17,7 @@ import torch_xla.utils.serialization as xser
 
 import numpy as np
 import warnings
+import gc
 warnings.filterwarnings("ignore")
 
 
@@ -127,7 +128,7 @@ class EfficientNet_Model:
 
             effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
             head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1) 
-            self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
+            self.log(f":::[Train RESULT]| Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
             
             self.save(f'{self.base_dir}/last_ckpt.bin')
 
@@ -135,10 +136,10 @@ class EfficientNet_Model:
             t = time.time()
 
             # Skip Validation
-            # val_device_loader = pl.MpDeviceLoader(validation_loader, xm.xla_device())
-            # summary_loss, final_scores = self.validation(val_device_loader)
+            val_device_loader = pl.MpDeviceLoader(validation_loader, xm.xla_device())
+            summary_loss, final_scores = self.validation(val_device_loader)
 
-            self.log(f":::[Valid RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
+            self.log(f":::[Valid RESULT]| Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
@@ -164,7 +165,7 @@ class EfficientNet_Model:
         t = time.time()
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
-                if step % (self.config.verbose_step * 20) == 0:
+                if step % (self.config.verbose_step * 5) == 0:
                     xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
             with torch.no_grad():
@@ -221,17 +222,13 @@ class EfficientNet_Model:
                     head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
                     xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {effNet_lr}/{head_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m")
 
+        gc.collect()
         return summary_loss, final_scores
-    
+
+
     def save(self, path):
         self.model.eval()
-        # xser.save({
-        #     'model_state_dict': self.model.state_dict(),
-        #     'optimizer_state_dict': self.optimizer.state_dict(),
-        #     'scheduler_state_dict': self.scheduler.state_dict(),
-        #     'best_summary_loss': self.best_summary_loss,
-        #     'epoch': self.epoch,
-        # }, path, master_only=True)
+        #xser.save(self.model.state_dict(), path, master_only=True, global_master=True )
         xm.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
@@ -241,17 +238,18 @@ class EfficientNet_Model:
         }, path)
 
     def load(self, path):
-        checkpoint = torch.load(path, map_location=torch.device('cpu'))
+        checkpoint = torch.load(path)
         # checkpoint = xser.load(path)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(checkpoint["model_state_dict"])
         # self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         # self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-        self.best_summary_loss = checkpoint['best_summary_loss']
+        # self.best_summary_loss = checkpoint['best_summary_loss']
         self.epoch = checkpoint['epoch'] + 1
         self.model.eval()
-        
+
     def log(self, message):
         if self.config.verbose:
             xm.master_print(message)
         with open(self.log_path, 'a+') as logger:
             logger.write(f'{message}\n')
+

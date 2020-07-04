@@ -27,6 +27,7 @@ import torch_xla
 import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
+import torch_xla.utils.serialization as xser
 
 import warnings
 from tqdm import tqdm
@@ -43,6 +44,7 @@ def run_inference():
 
     def get_valid_transforms():
         return A.Compose([
+                # A.Normalize(always_apply=True, p=1.0),
                 A.Resize(height=512, width=512, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.0)
@@ -77,18 +79,18 @@ def run_inference():
 
     test_loader = DataLoader(
         testset,
-        batch_size=8,
+        batch_size=32,
         shuffle=False,
-        num_workers=2,
+        num_workers=4,
         drop_last=False,
     )
 
     #device = torch.device('cuda:0')
     device = xm.xla_device()
-    net = EfficientNet_Model(device="device", config=global_config, steps=100)
+    net = EfficientNet_Model(device="DUMMY", config=global_config, steps=100)
     net.model = net.model.to(device)
 
-    net.load("./checkpoints/Alex_b2_025ep.bin")
+    net.load("./checkpoints/last_ckpt.bin")
 
     result = {'Id': [], 'Label': []}
     for step, (image_names, images) in enumerate(tqdm(test_loader)):

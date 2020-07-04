@@ -33,6 +33,7 @@ def run_inference():
     
     def get_valid_transforms():
         return A.Compose([
+                # A.Normalize(always_apply=True, p=1.0),
                 A.Resize(height=512, width=512, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.0)
@@ -64,10 +65,9 @@ def run_inference():
         transforms=get_valid_transforms(),
     )
 
-
     test_loader = DataLoader(
         testset,
-        batch_size=8,
+        batch_size=32,
         shuffle=False,
         num_workers=2,
         drop_last=False,
@@ -87,7 +87,7 @@ def run_inference():
         result['Label'].extend(y_pred)
 
     submission = pd.DataFrame(result)
-    submission.to_csv('./node_submissions/test_tpu_8420.csv', index=False)
+    submission.to_csv('./node_submissions/test_cuda_inference.csv', index=False)
     submission.head()
 
 run_inference()
