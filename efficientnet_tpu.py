@@ -96,7 +96,7 @@ class EfficientNet_Model:
         if global_config.CONTINUE_TRAIN: # Continue training proc -> Hand-tune LR 
             LR = self.config.TPU_LR # [9e-4, 1e-3]
         self.optimizer = torch.optim.AdamW([
-                    {'params': self.model.efn.parameters(),       'lr': LR[0]},
+                    {'params': self.model.efn.parameters(),       'lr': LR[0]}
                     # {'params': self.model.fc1.parameters(),       'lr': LR[1]},
                     # {'params': self.model.bn1.parameters(),       'lr': LR[1]},
                     # {'params': self.model.fc2.parameters(),       'lr': LR[1]},
@@ -113,30 +113,28 @@ class EfficientNet_Model:
         #     num_training_steps=num_train_steps,
         #     num_cycles=0.5
         # )
-
+        ############################################## 
+        train_device_loader = pl.MpDeviceLoader(train_loader, xm.xla_device())
+        val_device_loader   = pl.MpDeviceLoader(validation_loader, xm.xla_device())
         ############################################## 
 
         for e in range(self.config.TPU_EPOCH):
-            
-            ####### Training
+
+            ############## Training
+            gc.collect()
             t = time.time()
-
             xm.master_print("---" * 31)
-            train_device_loader = pl.MpDeviceLoader(train_loader, xm.xla_device())
             summary_loss, final_scores = self.train_one_epoch(train_device_loader)
-
 
             effNet_lr = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
             head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1) 
             self.log(f":::[Train RESULT]| Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
-            
             self.save(f'{self.base_dir}/last_ckpt.bin')
 
-            ####### Validation
+            ############## Validation
+            gc.collect()
             t = time.time()
-
             # Skip Validation
-            val_device_loader = pl.MpDeviceLoader(validation_loader, xm.xla_device())
             summary_loss, final_scores = self.validation(val_device_loader)
 
             self.log(f":::[Valid RESULT]| Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
@@ -145,7 +143,6 @@ class EfficientNet_Model:
                 self.best_summary_loss = summary_loss.avg
                 self.model.eval()
                 self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.bin')
-
                 # keep only the best 3 checkpoints
                 # for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
                 #     os.remove(path)
@@ -165,7 +162,7 @@ class EfficientNet_Model:
         t = time.time()
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
-                if step % (self.config.verbose_step * 5) == 0:
+                if step % (self.config.verbose_step * 2) == 0:
                     xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
             with torch.no_grad():
@@ -202,7 +199,7 @@ class EfficientNet_Model:
             loss = self.criterion(outputs, targets)
             loss.backward()                         # compute and sum gradients on params
             #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=global_config.CLIP_GRAD_NORM) 
-
+            
             xm.optimizer_step(self.optimizer)
             if self.config.step_scheduler:
                 self.scheduler.step()
@@ -222,7 +219,6 @@ class EfficientNet_Model:
                     head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
                     xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {effNet_lr}/{head_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m")
 
-        gc.collect()
         return summary_loss, final_scores
 
 

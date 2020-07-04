@@ -58,7 +58,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=10)
+gkf = GroupKFold(n_splits=8)
 dataset.loc[:, 'fold'] = 10
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -129,7 +129,7 @@ class DatasetRetriever(Dataset):
 
 
 def _mp_fn(rank, flags):
-
+    torch.manual_seed(1)
 
     val_fold_num = 0
     train_fold_num = 1
@@ -170,6 +170,7 @@ def _mp_fn(rank, flags):
         sampler=train_sampler,
         batch_size=global_config.TPU_BATCH_SIZE,
         drop_last=True,
+        shuffle=False if train_sampler else True,
         num_workers=global_config.TPU_num_workers,
     )
 
@@ -190,22 +191,10 @@ def _mp_fn(rank, flags):
     )
     # val_loader = 1
 
-    xm.master_print(f">>> Total training examples: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
-
-    if rank == 0:
-        time.sleep(1)
-
+    xm.master_print(f">>> Training examples on 1 core: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
     torch.set_default_tensor_type('torch.FloatTensor')
+
     device = xm.xla_device()
-    # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
-
-    # # Continue training proc
-    # if global_config.CONTINUE_TRAIN:
-    #     net.load(global_config.CONTINUE_TRAIN)
-    #     xm.master_print(">>> Loaded pretrained model to continue trianing!")
-
-    # xm.master_print(">>> Ready to fit Train Set...")
-
     net.model = net.model.to(device)
     net.fit(train_loader, val_loader)
 

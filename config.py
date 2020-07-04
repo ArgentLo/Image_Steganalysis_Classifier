@@ -17,13 +17,13 @@ GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 TPU_BATCH_SIZE = 16 * 8  # max 36 for b2
 TPU_EPOCH      = 40
-TPU_LR         = [7.5e-4, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.bin"
+CONTINUE_TRAIN = "./checkpoints/warmedup_b2.bin"
 verbose = True
-verbose_step = 10
+verbose_step = 5
 
 # -------------------
 
@@ -53,7 +53,7 @@ validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
 num_workers = 4
-TPU_num_workers = 2  # load data in the main process
+TPU_num_workers = 4  # load data in the main process
 CLIP_GRAD_NORM  = 1e-3
 
 # Endpoint features from EfficientNet
