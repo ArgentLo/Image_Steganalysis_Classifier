@@ -44,9 +44,9 @@ def run_inference():
 
     def get_valid_transforms():
         return A.Compose([
-                # A.Normalize(always_apply=True, p=1.0),
                 A.Resize(height=512, width=512, p=1.0),
                 ToTensorV2(p=1.0),
+                A.Normalize(p=1.0)
             ], p=1.0)
 
     class DatasetSubmissionRetriever(Dataset):
@@ -60,7 +60,7 @@ def run_inference():
             image_name = self.image_names[index]
             image = cv2.imread(f'{global_config.DATA_ROOT_PATH}/Test/{image_name}', cv2.IMREAD_COLOR)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-            image /= 255.0
+            # image /= 255.0
             if self.transforms:
                 sample = {'image': image}
                 sample = self.transforms(**sample)

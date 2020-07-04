@@ -14,6 +14,7 @@ import numpy as np
 import albumentations as A
 import matplotlib.pyplot as plt
 from albumentations.pytorch.transforms import ToTensorV2
+import torchvision.transforms as transforms
 from torch.utils.data import Dataset,DataLoader
 from torch.utils.data.sampler import SequentialSampler, RandomSampler
 import sklearn
@@ -58,8 +59,8 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=8)
-dataset.loc[:, 'fold'] = 10
+gkf = GroupKFold(n_splits=5)
+dataset.loc[:, 'fold'] = 0
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
     # if fold_number < 5:
@@ -73,18 +74,18 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
 # Simple Augs: Flips
 def get_train_transforms():
     return A.Compose([
-            # A.Normalize(always_apply=True, p=1.0),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Resize(height=512, width=512, p=1.0),
             ToTensorV2(p=1.0),
+            A.Normalize(p=1.0)
         ], p=1.0)
 
 def get_valid_transforms():
     return A.Compose([
-            # A.Normalize(always_apply=True, p=1.0),
             A.Resize(height=512, width=512, p=1.0),
             ToTensorV2(p=1.0),
+            A.Normalize(p=1.0)
         ], p=1.0)
 
 
@@ -108,7 +109,7 @@ class DatasetRetriever(Dataset):
         kind, image_name, label = self.kinds[index], self.image_names[index], self.labels[index]
         image = cv2.imread(f'{global_config.DATA_ROOT_PATH}/{kind}/{image_name}', cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image /= 255.0
+        # image /= 255.0
         if self.transforms:
             sample = {'image': image}
             sample = self.transforms(**sample)
@@ -148,7 +149,6 @@ def _mp_fn(rank, flags):
     #     transforms=get_train_transforms(),
     # )
 
-
     validation_dataset = DatasetRetriever(
         kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
         image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
@@ -168,10 +168,10 @@ def _mp_fn(rank, flags):
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         sampler=train_sampler,
-        batch_size=global_config.TPU_BATCH_SIZE,
         drop_last=True,
+        batch_size=global_config.TPU_BATCH_SIZE,
         shuffle=False if train_sampler else True,
-        num_workers=global_config.TPU_num_workers,
+        num_workers=global_config.TPU_num_workers
     )
 
     val_sampler = torch.utils.data.distributed.DistributedSampler(
@@ -183,11 +183,11 @@ def _mp_fn(rank, flags):
     
     val_loader = torch.utils.data.DataLoader(
         validation_dataset, 
-        batch_size=global_config.TPU_BATCH_SIZE,
-        num_workers=1,
-        shuffle=False,
         sampler=val_sampler,
-        drop_last=False
+        drop_last=True,
+        batch_size=global_config.TPU_BATCH_SIZE,
+        shuffle=False,
+        num_workers=global_config.TPU_num_workers # 1
     )
     # val_loader = 1
 
@@ -211,9 +211,8 @@ net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distru
 xm.master_print(">>> Ready to fit Train Set...")
 
 
+# xmp.spawn() should be wrapped in "__name__ == __main__()"
 if __name__ == '__main__':
-    torch.multiprocessing.freeze_support()
-
-    # Training 
+    # torch.multiprocessing.freeze_support()
     FLAGS={}
     xmp.spawn(_mp_fn, args=(FLAGS,), nprocs=8, start_method='fork')

@@ -33,9 +33,9 @@ def run_inference():
     
     def get_valid_transforms():
         return A.Compose([
-                # A.Normalize(always_apply=True, p=1.0),
                 A.Resize(height=512, width=512, p=1.0),
                 ToTensorV2(p=1.0),
+                # A.Normalize(p=1.0)
             ], p=1.0)
             
     class DatasetSubmissionRetriever(Dataset):

@@ -113,7 +113,8 @@ class EfficientNet_Model:
         #     num_training_steps=num_train_steps,
         #     num_cycles=0.5
         # )
-        ############################################## 
+        ##############################################
+        # DataLoader should init only once (outside the epoch loop) 
         train_device_loader = pl.MpDeviceLoader(train_loader, xm.xla_device())
         val_device_loader   = pl.MpDeviceLoader(validation_loader, xm.xla_device())
         ############################################## 
@@ -156,27 +157,31 @@ class EfficientNet_Model:
             self.epoch += 1
 
     def validation(self, val_loader):
+
         self.model.eval()
         summary_loss = AverageMeter()
         final_scores = RocAucMeter()
         t = time.time()
+
         for step, (images, targets) in enumerate(val_loader):
-            if self.config.verbose:
-                if step % (self.config.verbose_step * 2) == 0:
-                    xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
             with torch.no_grad():
                 targets = targets
-                batch_size = images.shape[0]
                 images = images
+                batch_size = images.shape[0]
                 outputs = self.model(images)
                 loss = self.criterion(outputs, targets)
                 try: 
                     final_scores.update(targets, outputs)
                 except:
-                    # xm.master_print("outputs: ", list(outputs.data.cpu().numpy())[:10])
+                    if step % (self.config.verbose_step * 2) == 0:
+                        xm.master_print("final_scores update failed...")
                     pass
                 summary_loss.update(loss.detach().item(), batch_size)
+
+            if self.config.verbose:
+                if step % (self.config.verbose_step * 2) == 0:
+                    xm.master_print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s")
 
         return summary_loss, final_scores
 

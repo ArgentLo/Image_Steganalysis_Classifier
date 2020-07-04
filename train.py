@@ -65,18 +65,18 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
 # Simple Augs: Flips
 def get_train_transforms():
     return A.Compose([
-            # A.Normalize(always_apply=True, p=1.0),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Resize(height=512, width=512, p=1.0),
             ToTensorV2(p=1.0),
+            # A.Normalize(p=1.0)
         ], p=1.0)
 
 def get_valid_transforms():
     return A.Compose([
-            # A.Normalize(always_apply=True, p=1.0),
             A.Resize(height=512, width=512, p=1.0),
             ToTensorV2(p=1.0),
+            # A.Normalize(p=1.0)
         ], p=1.0)
 
 
@@ -180,5 +180,6 @@ def run_training():
     net.fit(train_loader, val_loader)
 
 
-# Training 
-run_training()
+if __name__ == '__main__':
+    # Training 
+    run_training()
