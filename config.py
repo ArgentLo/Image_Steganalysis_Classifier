@@ -15,13 +15,13 @@ GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 16 * 8  # max 36 for b2
+TPU_BATCH_SIZE = 12 * 8  # max 36 for b2
 TPU_EPOCH      = 40
-TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [1.5e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = "./checkpoints/warmedup_b2.bin"
+CONTINUE_TRAIN = False #"./checkpoints/warmedup_b2.bin"
 verbose = True
 verbose_step = 5
 

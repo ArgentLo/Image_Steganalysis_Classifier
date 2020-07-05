@@ -68,15 +68,15 @@ def get_train_transforms():
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Resize(height=512, width=512, p=1.0),
+            A.Normalize(p=1.0),
             ToTensorV2(p=1.0),
-            # A.Normalize(p=1.0)
         ], p=1.0)
 
 def get_valid_transforms():
     return A.Compose([
             A.Resize(height=512, width=512, p=1.0),
+            A.Normalize(p=1.0),
             ToTensorV2(p=1.0),
-            # A.Normalize(p=1.0)
         ], p=1.0)
 
 
@@ -100,7 +100,7 @@ class DatasetRetriever(Dataset):
         kind, image_name, label = self.kinds[index], self.image_names[index], self.labels[index]
         image = cv2.imread(f'{global_config.DATA_ROOT_PATH}/{kind}/{image_name}', cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image /= 255.0
+        # image /= 255.0
         if self.transforms:
             sample = {'image': image}
             sample = self.transforms(**sample)

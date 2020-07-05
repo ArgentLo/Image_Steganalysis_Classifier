@@ -25,7 +25,7 @@ import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
 
-os.environ['XLA_USE_BF16'] = "1"
+# os.environ['XLA_USE_BF16'] = "1"
 
 
 import warnings
@@ -59,7 +59,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=5)
+gkf = GroupKFold(n_splits=8)
 dataset.loc[:, 'fold'] = 0
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -71,22 +71,39 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
 ##################################################################
 ##################################################################
 
+
 # Simple Augs: Flips
 def get_train_transforms():
-    return A.Compose([
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.Resize(height=512, width=512, p=1.0),
-            ToTensorV2(p=1.0),
-            A.Normalize(p=1.0)
-        ], p=1.0)
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    return transforms.Compose([
+        transforms.Resize(size=512),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ])
+    # return A.Compose([
+    #         A.HorizontalFlip(p=0.5),
+    #         A.VerticalFlip(p=0.5),
+    #         A.Resize(height=512, width=512, p=1.0),
+    #         A.Normalize(p=1.0),
+    #         ToTensorV2(p=1.0),
+    #     ], p=1.0)
 
 def get_valid_transforms():
-    return A.Compose([
-            A.Resize(height=512, width=512, p=1.0),
-            ToTensorV2(p=1.0),
-            A.Normalize(p=1.0)
-        ], p=1.0)
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    return transforms.Compose([
+        transforms.Resize(size=512),
+        transforms.ToTensor(),
+        normalize,
+    ])    
+    # return A.Compose([
+    #         A.Resize(height=512, width=512, p=1.0),
+    #         A.Normalize(p=1.0),
+    #         ToTensorV2(p=1.0),
+    #     ], p=1.0)
 
 
 # Dataset 
@@ -139,7 +156,7 @@ def _mp_fn(rank, flags):
         kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
         image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
         labels=dataset[dataset['fold'] != val_fold_num].label.values,
-        transforms=get_train_transforms(),
+        transforms=get_train_transforms()
     )
 
     # train_dataset = DatasetRetriever(

@@ -143,7 +143,7 @@ class EfficientNet_Model:
             print("---" * 31)
             self.log(f":::[Train RESULT] | Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 
-            self.save(f'{self.base_dir}/last_ckpt.bin')
+            self.save(f'{self.base_dir}/last_ckpt.pt')
 
             t = time.time()
             summary_loss, final_scores = self.validation(validation_loader)
@@ -153,10 +153,10 @@ class EfficientNet_Model:
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
                 self.model.eval()
-                self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.bin')
+                self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.pt')
 
                 # keep only the best 3 checkpoints
-                # for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.bin'))[:-3]:
+                # for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.pt'))[:-3]:
                 #     os.remove(path)
 
             if self.config.validation_scheduler:

@@ -45,8 +45,8 @@ def run_inference():
     def get_valid_transforms():
         return A.Compose([
                 A.Resize(height=512, width=512, p=1.0),
+                A.Normalize(p=1.0),
                 ToTensorV2(p=1.0),
-                A.Normalize(p=1.0)
             ], p=1.0)
 
     class DatasetSubmissionRetriever(Dataset):
@@ -90,7 +90,7 @@ def run_inference():
     net = EfficientNet_Model(device="DUMMY", config=global_config, steps=100)
     net.model = net.model.to(device)
 
-    net.load("./checkpoints/last_ckpt.bin")
+    net.load("./checkpoints/last_ckpt.pt")
 
     result = {'Id': [], 'Label': []}
     for step, (image_names, images) in enumerate(tqdm(test_loader)):
