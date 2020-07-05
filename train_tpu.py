@@ -74,40 +74,22 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
 
 # Simple Augs: Flips
 def get_train_transforms():
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    return transforms.Compose([
-        transforms.Resize(size=512),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.ToTensor(),
-        normalize,
-    ])
-    # return A.Compose([
-    #         A.HorizontalFlip(p=0.5),
-    #         A.VerticalFlip(p=0.5),
-    #         A.Resize(height=512, width=512, p=1.0),
-    #         A.Normalize(p=1.0),
-    #         ToTensorV2(p=1.0),
-    #     ], p=1.0)
+    return A.Compose([
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.Resize(height=512, width=512, p=1.0),
+            A.Normalize(p=1.0),
+            ToTensorV2(p=1.0),
+        ], p=1.0)
 
 def get_valid_transforms():
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    return transforms.Compose([
-        transforms.Resize(size=512),
-        transforms.ToTensor(),
-        normalize,
-    ])    
-    # return A.Compose([
-    #         A.Resize(height=512, width=512, p=1.0),
-    #         A.Normalize(p=1.0),
-    #         ToTensorV2(p=1.0),
-    #     ], p=1.0)
-
+    return A.Compose([
+            A.Resize(height=512, width=512, p=1.0),
+            A.Normalize(p=1.0),
+            ToTensorV2(p=1.0),
+        ], p=1.0)
 
 # Dataset 
-
 def onehot(size, target):
     vec = torch.zeros(size, dtype=torch.float32)
     vec[target] = 1.
