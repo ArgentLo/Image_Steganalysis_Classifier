@@ -1,8 +1,8 @@
 import torch
 
-EfficientNet_Level = 'efficientnet-b2'
+EfficientNet_Level = 'efficientnet-b7'
 
-SAVED_NAME = "Alex_b2"
+SAVED_NAME = "Alex_b7"
 
 LOSS_FN_LabelSmoothing = True # LabelSmoothing -> onehot; crossEnt: class_label
 
@@ -15,15 +15,15 @@ GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 12 * 8  # max 36 for b2
+TPU_BATCH_SIZE = 6 * 8  # 8*8: max for b2
 TPU_EPOCH      = 40
-TPU_LR         = [1.5e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [2e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
 CONTINUE_TRAIN = False #"./checkpoints/warmedup_b2.bin"
 verbose = True
-verbose_step = 5
+verbose_step = 20
 
 # -------------------
 

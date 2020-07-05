@@ -116,7 +116,10 @@ class EfficientNet_Model:
         ##############################################
         # DataLoader should init only once (outside the epoch loop) 
         train_device_loader = pl.MpDeviceLoader(train_loader, xm.xla_device())
-        val_device_loader   = pl.MpDeviceLoader(validation_loader, xm.xla_device())
+        if validation_loader == 1:
+            pass
+        else:
+            val_device_loader   = pl.MpDeviceLoader(validation_loader, xm.xla_device())
         ############################################## 
 
         for e in range(self.config.TPU_EPOCH):
@@ -136,7 +139,10 @@ class EfficientNet_Model:
             gc.collect()
             t = time.time()
             # Skip Validation
-            summary_loss, final_scores = self.validation(val_device_loader)
+            if validation_loader == 1:
+                pass
+            else:
+                summary_loss, final_scores = self.validation(val_device_loader)
 
             self.log(f":::[Valid RESULT]| Epoch: {str(self.epoch).rjust(2, ' ')} | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | LR: {effNet_lr}/{head_lr} | Time: {int((time.time() - t)//60)}m")
 

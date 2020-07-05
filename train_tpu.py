@@ -25,6 +25,9 @@ import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
 
+# cast `torch.float/double` as `TPU BF16` 
+#     0. NaN Loss (unstable)
+#     1. performance drops dramatically
 # os.environ['XLA_USE_BF16'] = "1"
 
 
@@ -59,7 +62,7 @@ dataset = pd.DataFrame(dataset)
 ##################################################################
 ##################################################################
 
-gkf = GroupKFold(n_splits=8)
+gkf = GroupKFold(n_splits=5)
 dataset.loc[:, 'fold'] = 0
 
 for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index, y=dataset['label'], groups=dataset['image_name'])):
@@ -148,12 +151,12 @@ def _mp_fn(rank, flags):
     #     transforms=get_train_transforms(),
     # )
 
-    validation_dataset = DatasetRetriever(
-        kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
-        image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
-        labels=dataset[dataset['fold'] == val_fold_num].label.values,
-        transforms=get_valid_transforms()
-    )
+    # validation_dataset = DatasetRetriever(
+    #     kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
+    #     image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
+    #     labels=dataset[dataset['fold'] == val_fold_num].label.values,
+    #     transforms=get_valid_transforms()
+    # )
 
 
 
@@ -173,22 +176,22 @@ def _mp_fn(rank, flags):
         num_workers=global_config.TPU_num_workers
     )
 
-    val_sampler = torch.utils.data.distributed.DistributedSampler(
-        validation_dataset,
-        num_replicas=xm.xrt_world_size(),
-        rank=xm.get_ordinal(),
-        shuffle=False
-    )
+    # val_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     validation_dataset,
+    #     num_replicas=xm.xrt_world_size(),
+    #     rank=xm.get_ordinal(),
+    #     shuffle=False
+    # )
     
-    val_loader = torch.utils.data.DataLoader(
-        validation_dataset, 
-        sampler=val_sampler,
-        drop_last=True,
-        batch_size=global_config.TPU_BATCH_SIZE,
-        shuffle=False,
-        num_workers=global_config.TPU_num_workers # 1
-    )
-    # val_loader = 1
+    # val_loader = torch.utils.data.DataLoader(
+    #     validation_dataset, 
+    #     sampler=val_sampler,
+    #     drop_last=True,
+    #     batch_size=global_config.TPU_BATCH_SIZE,
+    #     shuffle=False,
+    #     num_workers=global_config.TPU_num_workers # 1
+    # )
+    val_loader = 1
 
     xm.master_print(f">>> Training examples on 1 core: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
     torch.set_default_tensor_type('torch.FloatTensor')
