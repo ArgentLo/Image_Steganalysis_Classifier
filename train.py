@@ -173,8 +173,8 @@ def run_training():
     )
 
     print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
-    # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
 
+    # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
     net = Srnet_Model(device=device, config=global_config, steps=len(train_loader))
 
     # Continue training proc

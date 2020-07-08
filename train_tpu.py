@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore")
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 from efficientnet_tpu import EfficientNet_Model
-
+from srnet_model_tpu import Srnet_Model
 
 SEED = 42
 seed_everything(SEED)
@@ -204,7 +204,8 @@ def _mp_fn(rank, flags):
     net.fit(train_loader, val_loader)
 
 
-net = EfficientNet_Model(device="DUMMY", config=global_config, steps=100)
+# net = EfficientNet_Model(device="TPU", config=global_config, steps=100)
+net = Srnet_Model(device="TPU", config=global_config, steps=100)
 
 # Continue training proc
 if global_config.CONTINUE_TRAIN:
