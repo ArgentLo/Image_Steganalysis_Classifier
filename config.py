@@ -2,16 +2,16 @@ import torch
 EfficientNet_Level = 'efficientnet-b5'
 
 
-SAVED_NAME = "SRnet_ch3"
+SAVED_NAME = "SRnet_ch3_gelu"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
 
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 14
+GPU_BATCH_SIZE = 15
 GPU_EPOCH      = 35
-GPU_LR         = [1e-2, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 

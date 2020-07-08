@@ -124,20 +124,20 @@ class DatasetRetriever(Dataset):
 val_fold_num = 0
 train_fold_num = 1
 
-# train_dataset = DatasetRetriever(
-#     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-#     image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-#     labels=dataset[dataset['fold'] != val_fold_num].label.values,
-#     transforms=get_train_transforms(),
-# )
-
-# # (dataset['fold']==4) | (dataset['fold']==3)
 train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] == train_fold_num].label.values,
+    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+    labels=dataset[dataset['fold'] != val_fold_num].label.values,
     transforms=get_train_transforms(),
 )
+
+# # (dataset['fold']==4) | (dataset['fold']==3)
+# train_dataset = DatasetRetriever(
+#     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
+#     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
+#     labels=dataset[dataset['fold'] == train_fold_num].label.values,
+#     transforms=get_train_transforms(),
+# )
 
 
 validation_dataset = DatasetRetriever(
