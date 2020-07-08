@@ -67,7 +67,7 @@ def run_inference():
 
     test_loader = DataLoader(
         testset,
-        batch_size=16,
+        batch_size=8,
         shuffle=False,
         num_workers=2,
         drop_last=False,
@@ -76,7 +76,7 @@ def run_inference():
     device = torch.device('cuda:0')
     net = EfficientNet_Model(device=device, config=global_config, steps=len(test_loader))
 
-    net.load("./checkpoints/88_val.pt")
+    net.load("./checkpoints/warmedup_b5.pt")
 
     result = {'Id': [], 'Label': []}
     for step, (image_names, images) in enumerate(tqdm(test_loader)):        
@@ -87,7 +87,7 @@ def run_inference():
         result['Label'].extend(y_pred)
 
     submission = pd.DataFrame(result)
-    submission.to_csv('./node_submissions/88_val.csv', index=False)
+    submission.to_csv('./node_submissions/test_89.csv', index=False)
     submission.head()
 
 run_inference()

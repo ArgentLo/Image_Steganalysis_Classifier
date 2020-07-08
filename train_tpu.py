@@ -71,6 +71,8 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
     # else: 
     #     break
 
+dataset = pd.read_csv("../dataset/kfold_by_alex.csv")
+
 ##################################################################
 ##################################################################
 
@@ -144,6 +146,7 @@ def _mp_fn(rank, flags):
         transforms=get_train_transforms()
     )
 
+    # # (dataset['fold']==4) | (dataset['fold']==3)
     # train_dataset = DatasetRetriever(
     #     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
     #     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
@@ -176,22 +179,22 @@ def _mp_fn(rank, flags):
         num_workers=global_config.TPU_num_workers
     )
 
-    # val_sampler = torch.utils.data.distributed.DistributedSampler(
-    #     validation_dataset,
-    #     num_replicas=xm.xrt_world_size(),
-    #     rank=xm.get_ordinal(),
-    #     shuffle=False
-    # )
+    val_sampler = torch.utils.data.distributed.DistributedSampler(
+        validation_dataset,
+        num_replicas=xm.xrt_world_size(),
+        rank=xm.get_ordinal(),
+        shuffle=False
+    )
     
-    # val_loader = torch.utils.data.DataLoader(
-    #     validation_dataset, 
-    #     sampler=val_sampler,
-    #     drop_last=True,
-    #     batch_size=global_config.TPU_BATCH_SIZE,
-    #     shuffle=False,
-    #     num_workers=global_config.TPU_num_workers # 1
-    # )
-    val_loader = 1
+    val_loader = torch.utils.data.DataLoader(
+        validation_dataset, 
+        sampler=val_sampler,
+        drop_last=True,
+        batch_size=global_config.TPU_BATCH_SIZE,
+        shuffle=False,
+        num_workers=0 # 1
+    )
+    # val_loader = 1
 
     xm.master_print(f">>> Training examples on 1 core: {len(train_loader) * global_config.TPU_BATCH_SIZE}")
     torch.set_default_tensor_type('torch.FloatTensor')
@@ -208,7 +211,7 @@ if global_config.CONTINUE_TRAIN:
     net.load(global_config.CONTINUE_TRAIN)
     xm.master_print(f">>> {global_config.CONTINUE_TRAIN} is LOADED for resuming trianing!")
 
-net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
+#net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
 
 xm.master_print(">>> Ready to fit Train Set...")
 

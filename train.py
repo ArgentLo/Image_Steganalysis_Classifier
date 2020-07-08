@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 from efficientnet import EfficientNet_Model
-
+from srnet_model import Srnet_Model
 
 SEED = 42
 seed_everything(SEED)
@@ -58,6 +58,8 @@ for fold_number, (train_index, val_index) in enumerate(gkf.split(X=dataset.index
     dataset.loc[dataset.iloc[val_index].index, 'fold'] = fold_number
     # else: 
     #     break
+
+dataset = pd.read_csv("../dataset/kfold_by_alex.csv")
 
 ##################################################################
 ##################################################################
@@ -129,6 +131,7 @@ train_fold_num = 1
 #     transforms=get_train_transforms(),
 # )
 
+# # (dataset['fold']==4) | (dataset['fold']==3)
 train_dataset = DatasetRetriever(
     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
@@ -170,7 +173,9 @@ def run_training():
     )
 
     print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
-    net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
+    # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
+
+    net = Srnet_Model(device=device, config=global_config, steps=len(train_loader))
 
     # Continue training proc
     if global_config.CONTINUE_TRAIN:

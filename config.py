@@ -1,17 +1,17 @@
 import torch
+EfficientNet_Level = 'efficientnet-b5'
 
-EfficientNet_Level = 'efficientnet-b7'
 
-SAVED_NAME = "Alex_b7"
+SAVED_NAME = "Alex_b5"
 
-LOSS_FN_LabelSmoothing = True # LabelSmoothing -> onehot; crossEnt: class_label
+LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
 
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 16
+GPU_BATCH_SIZE = 10
 GPU_EPOCH      = 35
-GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [5e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
@@ -23,7 +23,7 @@ TPU_LR         = [2e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 CONTINUE_TRAIN = False #"./checkpoints/warmedup_b2.bin"
 verbose = True
-verbose_step = 20
+verbose_step = 50
 
 # -------------------
 
@@ -40,7 +40,7 @@ verbose_step = 20
 SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
 scheduler_params = dict(
         mode='min',
-        factor=0.7,
+        factor=0.6,
         patience=1,
         verbose=False,
         threshold=0.0001,
@@ -53,7 +53,7 @@ validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
 num_workers = 4
-TPU_num_workers = 4  # load data in the main process
+TPU_num_workers = 0  # load data in the main process
 CLIP_GRAD_NORM  = 1e-3
 
 # Endpoint features from EfficientNet
