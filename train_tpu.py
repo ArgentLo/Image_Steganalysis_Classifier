@@ -154,14 +154,12 @@ def _mp_fn(rank, flags):
     #     transforms=get_train_transforms(),
     # )
 
-    # validation_dataset = DatasetRetriever(
-    #     kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
-    #     image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
-    #     labels=dataset[dataset['fold'] == val_fold_num].label.values,
-    #     transforms=get_valid_transforms()
-    # )
-
-
+    validation_dataset = DatasetRetriever(
+        kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
+        image_names=dataset[dataset['fold'] == val_fold_num].image_name.values,
+        labels=dataset[dataset['fold'] == val_fold_num].label.values,
+        transforms=get_valid_transforms()
+    )
 
     train_sampler = torch.utils.data.distributed.DistributedSampler(
         train_dataset,

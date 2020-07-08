@@ -2,22 +2,22 @@ import torch
 EfficientNet_Level = 'efficientnet-b5'
 
 
-SAVED_NAME = "Alex_b5"
+SAVED_NAME = "SRnet_ch3"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
 
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 10
+GPU_BATCH_SIZE = 14
 GPU_EPOCH      = 35
-GPU_LR         = [5e-3, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [1e-2, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 8 * 8  # 8*8: max for b2
+TPU_BATCH_SIZE = 4 * 8  # 8*8: max for b2
 TPU_EPOCH      = 40
-TPU_LR         = [2e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [1e-2, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
