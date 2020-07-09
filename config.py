@@ -1,28 +1,28 @@
 import torch
-EfficientNet_Level = 'efficientnet-b5'
+EfficientNet_Level = 'efficientnet-b2'
 
 
-SAVED_NAME = "Mnasnet1_0"
+SAVED_NAME = "b2_ClassWeight"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
-CLASS_WEIGHTS = [1, 1, 1, 1] # [1.15, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
+CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
 
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 60
 GPU_EPOCH      = 35
-GPU_LR         = [3e-4, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [1.5e-4, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
-TPU_BATCH_SIZE = 4 * 8  # 8*8: max for b2
+TPU_BATCH_SIZE = 8 * 8  # 8*8: max for b2
 TPU_EPOCH      = 40
-TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [1.5e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = "./checkpoints/last_ckpt.pt"
+CONTINUE_TRAIN = False #"./checkpoints/last_ckpt.pt"
 verbose = True
 verbose_step = 50
 
@@ -41,7 +41,7 @@ verbose_step = 50
 SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
 scheduler_params = dict(
         mode='min',
-        factor=0.6,
+        factor=0.5,
         patience=1,
         verbose=False,
         threshold=0.0001,
