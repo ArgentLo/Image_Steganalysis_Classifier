@@ -25,6 +25,9 @@ import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
 
+# You can use the following to always use higher precision in XLA:
+torch_xla._XLAC._xla_set_use_full_mat_mul_precision(True)
+
 # cast `torch.float/double` as `TPU BF16` 
 #     0. NaN Loss (unstable)
 #     1. performance drops dramatically
@@ -38,7 +41,7 @@ warnings.filterwarnings("ignore")
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 from efficientnet_tpu import EfficientNet_Model
-from srnet_model_tpu import Srnet_Model
+# from efficientnet_tpu_ext_head import EfficientNet_Model
 
 SEED = 42
 seed_everything(SEED)
@@ -139,20 +142,20 @@ def _mp_fn(rank, flags):
     val_fold_num = 0
     train_fold_num = 1
 
-    train_dataset = DatasetRetriever(
-        kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-        image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-        labels=dataset[dataset['fold'] != val_fold_num].label.values,
-        transforms=get_train_transforms()
-    )
-
-    # # (dataset['fold']==4) | (dataset['fold']==3)
     # train_dataset = DatasetRetriever(
-    #     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
-    #     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
-    #     labels=dataset[dataset['fold'] == train_fold_num].label.values,
-    #     transforms=get_train_transforms(),
+    #     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+    #     image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+    #     labels=dataset[dataset['fold'] != val_fold_num].label.values,
+    #     transforms=get_train_transforms()
     # )
+
+    # (dataset['fold']==4) | (dataset['fold']==3)
+    train_dataset = DatasetRetriever(
+        kinds=dataset[(dataset['fold']==4) | (dataset['fold']==3)].kind.values,
+        image_names=dataset[(dataset['fold']==4) | (dataset['fold']==3)].image_name.values,
+        labels=dataset[(dataset['fold']==4) | (dataset['fold']==3)].label.values,
+        transforms=get_train_transforms(),
+    )
 
     validation_dataset = DatasetRetriever(
         kinds=dataset[dataset['fold'] == val_fold_num].kind.values,
@@ -202,15 +205,14 @@ def _mp_fn(rank, flags):
     net.fit(train_loader, val_loader)
 
 
-# net = EfficientNet_Model(device="TPU", config=global_config, steps=100)
-net = Srnet_Model(device="TPU", config=global_config, steps=100)
+net = EfficientNet_Model(device="TPU", config=global_config, steps=100)
 
 # Continue training proc
 if global_config.CONTINUE_TRAIN:
     net.load(global_config.CONTINUE_TRAIN)
     xm.master_print(f">>> {global_config.CONTINUE_TRAIN} is LOADED for resuming trianing!")
 
-#net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
+net.model = xmp.MpModelWrapper(net.model) # wrap the model for seamlessly distrubuted training 
 
 xm.master_print(">>> Ready to fit Train Set...")
 

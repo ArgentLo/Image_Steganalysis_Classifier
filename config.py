@@ -2,26 +2,27 @@ import torch
 EfficientNet_Level = 'efficientnet-b5'
 
 
-SAVED_NAME = "SRnet_ch3_gelu"
+SAVED_NAME = "Mnasnet1_0"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
+CLASS_WEIGHTS = [1, 1, 1, 1] # [1.15, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
 
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 15
+GPU_BATCH_SIZE = 60
 GPU_EPOCH      = 35
-GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [3e-4, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
 TPU_BATCH_SIZE = 4 * 8  # 8*8: max for b2
 TPU_EPOCH      = 40
-TPU_LR         = [1e-2, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = False #"./checkpoints/warmedup_b2.bin"
+CONTINUE_TRAIN = "./checkpoints/last_ckpt.pt"
 verbose = True
 verbose_step = 50
 
@@ -52,7 +53,7 @@ step_scheduler = False  # do scheduler.step after optimizer.step
 validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
-num_workers = 4
+num_workers = 0
 TPU_num_workers = 0  # load data in the main process
 CLIP_GRAD_NORM  = 1e-3
 

@@ -5,51 +5,40 @@ from datetime import datetime
 import time
 import os 
 from glob import glob
-from efficientnet_pytorch import EfficientNet
 from transformers import get_cosine_with_hard_restarts_schedule_with_warmup
 from apex import amp
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
-
+import torchvision.models as models
 
 from loss_fn import LabelSmoothing
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 
 
-def GlobalAvgPooling(x):
-    return x.mean(axis=-1).mean(axis=-1)
+class Customized_Srnet(nn.Module):
+    def __init__(self, in_channels):
+        super(Customized_Srnet, self).__init__()
 
-class Customized_ENSModel(nn.Module):
-    def __init__(self, EfficientNet_Level):
-        super(Customized_ENSModel, self).__init__()
+        # using RGB 3 channels
+        self.mnasnet = models.mnasnet1_0(pretrained=False)
+        print(">>> Loaded Pre-trained MNASnet!")
 
-        self.efn = EfficientNet.from_pretrained(EfficientNet_Level)
-        self.efn._fc = nn.Linear(in_features=global_config.EfficientNet_OutFeats, 
-                                 out_features=4, bias=True)
-
-        # self.avgpool   = GlobalAvgPooling
-        # self.fc1       = nn.Linear(global_config.EfficientNet_OutFeats, global_config.EfficientNet_OutFeats//2)
-        # self.bn1       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//2)
-        # self.fc2       = nn.Linear(global_config.EfficientNet_OutFeats//2, global_config.EfficientNet_OutFeats//4)
-        # self.bn2       = nn.BatchNorm1d(global_config.EfficientNet_OutFeats//4)
-        # self.dense_out = nn.Linear(global_config.EfficientNet_OutFeats//4, 4)
+        self.fc1       = nn.Linear(1000, 250)
+        self.bn1       = nn.BatchNorm1d(250)
+        self.dense_out = nn.Linear(250, 4)
         
     def forward(self, x):
-        # x = self.efn.extract_features(x)
-        # x = F.gelu(self.avgpool(x))
-        # x = F.gelu(self.fc1(x))
-        # x = self.bn1(x)  # bn after activation fn
-        # x = F.gelu(self.fc2(x))
-        # x = self.bn2(x)  # bn after activation fn
-        # x = self.dense_out(x)
-        # return x
-        return self.efn(x)
+        x = self.mnasnet(x)
+        x = F.gelu(self.fc1(x))
+        x = self.bn1(x)  # bn after activation fn
+        x = self.dense_out(x)
+        return x
 
 
-# EfficientNet
-class EfficientNet_Model:
+# Mnasnet_Model
+class Mnasnet_Model:
     
     def __init__(self, device, config, steps):
         self.config = config
@@ -60,7 +49,7 @@ class EfficientNet_Model:
         self.log_path = f'{self.base_dir}/log.txt'
         self.best_summary_loss = 10**5
 
-        self.model = Customized_ENSModel(global_config.EfficientNet_Level)
+        self.model = Customized_Srnet(in_channels=3)
         self.model = self.model.cuda()
         self.device = device
 
@@ -79,7 +68,7 @@ class EfficientNet_Model:
             # self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.GPU_LR)
             LR = config.GPU_LR
             self.optimizer = torch.optim.AdamW([
-                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
+                        {'params': self.model.parameters(),       'lr': LR[0]},
                         # {'params': self.model.fc1.parameters(),       'lr': LR[1]},
                         # {'params': self.model.bn1.parameters(),       'lr': LR[1]},
                         # {'params': self.model.fc2.parameters(),       'lr': LR[1]},
@@ -122,13 +111,13 @@ class EfficientNet_Model:
         # Continue training proc -> Hand-tune LR 
         if global_config.CONTINUE_TRAIN:
 
-            LR = [7e-5, 9e-5]
+            LR = global_config.GPU_LR
 
             self.optimizer = torch.optim.AdamW([
-                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
-                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
+                        {'params': self.model.parameters(),       'lr': LR[0]},
+                        # {'params': self.model.fc1.parameters(),       'lr': LR[1]},
+                        # {'params': self.model.bn1.parameters(),       'lr': LR[1]},
+                        # {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
                         ])
             ############################################## 
             self.scheduler = global_config.SchedulerClass(self.optimizer, **global_config.scheduler_params)
@@ -177,20 +166,17 @@ class EfficientNet_Model:
         for step, (images, targets) in enumerate(val_loader):
             if self.config.verbose:
                 if step % self.config.verbose_step == 0:
+                    print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s") # , end='\r')
 
-                    print(f"::: Valid Step({step}/{len(val_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.4f} | Time: {int((time.time() - t))}s") #, end='\r')
-
-                    # print(
-                    #     f'Val Step {step}/{len(val_loader)}, ' + \
-                    #     f'summary_loss: {summary_loss.avg:.5f}, final_score: {final_scores.avg:.5f}, ' + \
-                    #     f'time: {(time.time() - t):.5f}', end='\r'
-                    # )
             with torch.no_grad():
                 targets = targets.to(self.device)
                 batch_size = images.shape[0]
                 images = images.to(self.device).float()
                 outputs = self.model(images)
+                # print("Outputs: ", list(outputs.data.cpu().numpy())[:10])
+                # print("Targets: ", list(targets.data.cpu().numpy())[:10])
                 loss = self.criterion(outputs, targets)
+                # print("Loss   : ", loss.detach().item())
                 try: 
                     final_scores.update(targets, outputs)
                 except:
@@ -206,7 +192,6 @@ class EfficientNet_Model:
         final_scores = RocAucMeter()
         t = time.time()
         for step, (images, targets) in enumerate(train_loader):
-
             t0 = time.time()
             targets = targets.to(self.device)
             images = images.to(self.device).float()

@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 from efficientnet import EfficientNet_Model
-from srnet_model import Srnet_Model
+from mnasnet_model import Mnasnet_Model
 
 SEED = 42
 seed_everything(SEED)
@@ -102,6 +102,10 @@ class DatasetRetriever(Dataset):
         kind, image_name, label = self.kinds[index], self.image_names[index], self.labels[index]
         image = cv2.imread(f'{global_config.DATA_ROOT_PATH}/{kind}/{image_name}', cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+        
+        # GRAY color for SRNet 
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)[..., None]  # SRNet: to 1 dim (and expand dim)
+        # print(">>>> shape: ", image.shape)
         # image /= 255.0
         if self.transforms:
             sample = {'image': image}
@@ -112,6 +116,8 @@ class DatasetRetriever(Dataset):
             target = onehot(4, label)
         else: 
             target = label
+            # Binary for SRNet
+            # target = torch.from_numpy(np.array((label > 0), dtype=np.float)).long()
         return image, target
 
     def __len__(self) -> int:
@@ -124,20 +130,20 @@ class DatasetRetriever(Dataset):
 val_fold_num = 0
 train_fold_num = 1
 
-train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] != val_fold_num].label.values,
-    transforms=get_train_transforms(),
-)
-
-# # (dataset['fold']==4) | (dataset['fold']==3)
 # train_dataset = DatasetRetriever(
-#     kinds=dataset[dataset['fold'] == train_fold_num].kind.values,
-#     image_names=dataset[dataset['fold'] == train_fold_num].image_name.values,
-#     labels=dataset[dataset['fold'] == train_fold_num].label.values,
+#     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+#     image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+#     labels=dataset[dataset['fold'] != val_fold_num].label.values,
 #     transforms=get_train_transforms(),
 # )
+
+# # (dataset['fold']==4) | (dataset['fold']==3)
+train_dataset = DatasetRetriever(
+    kinds=dataset[(dataset['fold']==4) | (dataset['fold']==3)].kind.values,
+    image_names=dataset[(dataset['fold']==4) | (dataset['fold']==3)].image_name.values,
+    labels=dataset[(dataset['fold']==4) | (dataset['fold']==3)].label.values,
+    transforms=get_train_transforms(),
+)
 
 
 validation_dataset = DatasetRetriever(
@@ -175,7 +181,7 @@ def run_training():
     print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
 
     # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
-    net = Srnet_Model(device=device, config=global_config, steps=len(train_loader))
+    net = Mnasnet_Model(device=device, config=global_config, steps=len(train_loader))
 
     # Continue training proc
     if global_config.CONTINUE_TRAIN:
