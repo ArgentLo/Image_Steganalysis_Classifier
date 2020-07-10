@@ -11,19 +11,20 @@ CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 14
 GPU_EPOCH      = 40
-GPU_LR         = [2e-4, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [1e-4, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
 TPU_BATCH_SIZE = 4 * 8  # 8*8: max for b2
 TPU_EPOCH      = 40
 TPU_LR         = [1e-3, 1e-3] # [EffNet, HEAD] [1e-3, 1.5e-3]
+PRECISE_FTUNE  = False
 
 ########   XLA TPU Setting   #########
 
 CONTINUE_TRAIN = "./checkpoints/last_ckpt.pt"
 verbose = True
-verbose_step = 200
+verbose_step = 50
 
 # -------------------
 

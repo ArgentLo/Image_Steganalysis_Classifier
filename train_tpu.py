@@ -25,14 +25,6 @@ import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
 import torch_xla.distributed.xla_multiprocessing as xmp
 
-# You can use the following to always use higher precision in XLA:
-torch_xla._XLAC._xla_set_use_full_mat_mul_precision(True)
-
-# cast `torch.float/double` as `TPU BF16` 
-#     0. NaN Loss (unstable)
-#     1. performance drops dramatically
-# os.environ['XLA_USE_BF16'] = "1"
-
 
 import warnings
 from tqdm import tqdm
@@ -42,6 +34,18 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 from efficientnet_tpu import EfficientNet_Model
 # from efficientnet_tpu_ext_head import EfficientNet_Model
+
+
+# You can use the following to always use higher precision in XLA:
+if global_config.PRECISE_FTUNE:
+    torch_xla._XLAC._xla_set_use_full_mat_mul_precision(True)
+
+# cast `torch.float/double` as `TPU BF16` 
+#     0. NaN Loss (unstable)
+#     1. performance drops dramatically
+# os.environ['XLA_USE_BF16'] = "1"
+
+
 
 SEED = 42
 seed_everything(SEED)
