@@ -228,6 +228,10 @@ class EfficientNet_Model:
                     head_lr   = np.format_float_scientific(self.optimizer.param_groups[0]['lr'], unique=False, precision=1)
                     xm.master_print(f":::({str(step).rjust(4, ' ')}/{len(train_loader)}) | Loss: {summary_loss.avg:.4f} | AUC: {final_scores.avg:.5f} | LR: {effNet_lr}/{head_lr} | BTime: {t1-t0 :.2f}s | ETime: {int((t1-t0)*(len(train_loader)-step)//60)}m")
 
+            # save model inside epoch (in case TPU is preempted)
+            #if (step > 0) & (step % (len(train_loader)//4) == 0):
+                #self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep_{int(step/(len(train_loader)//4))}step.pt')
+
         return summary_loss, final_scores
 
 

@@ -1,7 +1,7 @@
 import torch
 EfficientNet_Level = 'efficientnet-b2'
 
-SAVED_NAME = "SE_ResNet152"
+SAVED_NAME = "resnet152"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
 CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
@@ -9,9 +9,9 @@ CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 14
+GPU_BATCH_SIZE = 16
 GPU_EPOCH      = 40
-GPU_LR         = [1e-4, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
@@ -22,9 +22,9 @@ PRECISE_FTUNE  = False
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = "./checkpoints/last_ckpt.pt"
+CONTINUE_TRAIN = False # "./checkpoints/last_ckpt.pt"
 verbose = True
-verbose_step = 50
+verbose_step = 500
 
 # -------------------
 
@@ -53,7 +53,7 @@ step_scheduler = False  # do scheduler.step after optimizer.step
 validation_scheduler = True  # do scheduler.step after validation stage loss
 
 DATA_ROOT_PATH = '../dataset'
-num_workers = 0
+num_workers = 4
 TPU_num_workers = 0  # load data in the main process
 CLIP_GRAD_NORM  = 1e-3
 

@@ -19,20 +19,28 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 
 
-
 class Customized_Model(nn.Module):
     def __init__(self, in_channels):
         super(Customized_Model, self).__init__()
 
-        self.model_name = 'se_resnet152' # could be fbresnet152 or inceptionresnetv2
+        self.model_name = 'resnet152'
         self.model = pretrainedmodels.__dict__[self.model_name](num_classes=1000, pretrained='imagenet')
-        print(">>> Loaded Pre-trained Se-ResNext!")
+        print(f">>> Loaded Pre-trained {self.model_name}!")
         self.model.last_linear = nn.Linear(in_features=2048, out_features=4, bias=True)
         
+        # self.fc1       = nn.Linear(1000, 500, bias=True)
+        # self.dropout   = nn.Dropout(p=0.2)
+        # self.dense_out = nn.Linear(500, 4)
+        
+
     def forward(self, x):
         x = self.model(x)
-        return x
 
+        # x = F.relu(self.fc1(x))
+        # x = self.dropout(x)
+        # x = self.dense_out(x)
+        
+        return x
 
 # Pretrained_Model
 class Pretrained_Model:
