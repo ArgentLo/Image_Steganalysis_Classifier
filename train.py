@@ -27,6 +27,7 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 from efficientnet import EfficientNet_Model
 from mnasnet_model import Mnasnet_Model
+from pretrained_models import Pretrained_Model
 
 SEED = 42
 seed_everything(SEED)
@@ -139,9 +140,9 @@ train_fold_num = 1
 
 # # (dataset['fold']==4) | (dataset['fold']==3)
 train_dataset = DatasetRetriever(
-    kinds=dataset[(dataset['fold']==4) | (dataset['fold']==3)].kind.values,
-    image_names=dataset[(dataset['fold']==4) | (dataset['fold']==3)].image_name.values,
-    labels=dataset[(dataset['fold']==4) | (dataset['fold']==3)].label.values,
+    kinds=dataset[(dataset['fold']==4)].kind.values,
+    image_names=dataset[(dataset['fold']==4)].image_name.values,
+    labels=dataset[(dataset['fold']==4)].label.values,
     transforms=get_train_transforms(),
 )
 
@@ -181,7 +182,7 @@ def run_training():
     print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
 
     # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
-    net = Mnasnet_Model(device=device, config=global_config, steps=len(train_loader))
+    net = Pretrained_Model(device=device, config=global_config, steps=len(train_loader))
 
     # Continue training proc
     if global_config.CONTINUE_TRAIN:
