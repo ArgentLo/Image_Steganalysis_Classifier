@@ -19,26 +19,30 @@ from utils import seed_everything, AverageMeter, RocAucMeter
 import config as global_config
 
 
+def GlobalAvgPooling(x):
+    return x.mean(axis=-1).mean(axis=-1)
+
 class Customized_Model(nn.Module):
     def __init__(self, in_channels):
         super(Customized_Model, self).__init__()
 
-        self.model_name = 'resnet152'
+        self.model_name = 'pnasnet5large'
         self.model = pretrainedmodels.__dict__[self.model_name](num_classes=1000, pretrained='imagenet')
         print(f">>> Loaded Pre-trained {self.model_name}!")
-        self.model.last_linear = nn.Linear(in_features=2048, out_features=4, bias=True)
+        # self.model.last_linear = nn.Linear(in_features=4320, out_features=4, bias=True)
         
-        # self.fc1       = nn.Linear(1000, 500, bias=True)
+        self.avgpool   = GlobalAvgPooling
+        # self.fc1       = nn.Linear(4320, 500, bias=True)
         # self.dropout   = nn.Dropout(p=0.2)
-        # self.dense_out = nn.Linear(500, 4)
+        self.dense_out = nn.Linear(4320, 4)
         
 
     def forward(self, x):
-        x = self.model(x)
-
+        x = self.model.features(x)
+        x = self.avgpool(x)
         # x = F.relu(self.fc1(x))
         # x = self.dropout(x)
-        # x = self.dense_out(x)
+        x = self.dense_out(x)
         
         return x
 

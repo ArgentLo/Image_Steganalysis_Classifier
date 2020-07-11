@@ -87,7 +87,7 @@ def run_inference():
 
     device = torch.device('cuda:0')
     net = EfficientNet_Model(device=device, config=global_config, steps=100)
-    net.load("./checkpoints/b2_ClassWeight_025ep.pt")
+    net.load("./checkpoints/b7_ClassWeight_019ep.pt")
 
     results = []
     for mode in range(0, 4):
@@ -129,7 +129,7 @@ def run_inference():
                              + submissions[2]['Label'] 
                              + submissions[3]['Label']) / 6
 
-    submissions[0].to_csv('./node_submissions/sub_907_TTA.csv', index=False)
+    submissions[0].to_csv('./node_submissions/b7_ClassWeight_019ep.csv', index=False)
 
 
 if __name__ == '__main__':

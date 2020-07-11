@@ -1,7 +1,7 @@
 import torch
-EfficientNet_Level = 'efficientnet-b2'
+EfficientNet_Level = 'efficientnet-b7'
 
-SAVED_NAME = "resnet152"
+SAVED_NAME = "PNasnet5Large"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
 CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
@@ -9,7 +9,7 @@ CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
-GPU_BATCH_SIZE = 16
+GPU_BATCH_SIZE = 6
 GPU_EPOCH      = 40
 GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
 
@@ -22,7 +22,7 @@ PRECISE_FTUNE  = False
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN = False # "./checkpoints/last_ckpt.pt"
+CONTINUE_TRAIN =  False # "./checkpoints/last_ckpt.pt"
 verbose = True
 verbose_step = 500
 
