@@ -4,7 +4,8 @@ EfficientNet_Level = 'efficientnet-b7'
 SAVED_NAME = "PNasnet5Large"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
-CLASS_WEIGHTS = [1.3, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
+CLASS_WEIGHTS = [2, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
+
 
 ########   GPU Apex Setting   ########
 
