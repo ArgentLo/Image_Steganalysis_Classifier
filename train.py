@@ -131,20 +131,20 @@ class DatasetRetriever(Dataset):
 val_fold_num = 0
 train_fold_num = 1
 
-train_dataset = DatasetRetriever(
-    kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
-    image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
-    labels=dataset[dataset['fold'] != val_fold_num].label.values,
-    transforms=get_train_transforms(),
-)
-
-# # (dataset['fold']==4) | (dataset['fold']==3)
 # train_dataset = DatasetRetriever(
-#     kinds=dataset[(dataset['fold']==4)].kind.values,
-#     image_names=dataset[(dataset['fold']==4)].image_name.values,
-#     labels=dataset[(dataset['fold']==4)].label.values,
+#     kinds=dataset[dataset['fold'] != val_fold_num].kind.values,
+#     image_names=dataset[dataset['fold'] != val_fold_num].image_name.values,
+#     labels=dataset[dataset['fold'] != val_fold_num].label.values,
 #     transforms=get_train_transforms(),
 # )
+
+# # (dataset['fold']==4) | (dataset['fold']==3)
+train_dataset = DatasetRetriever(
+    kinds=dataset[(dataset['fold']==2) | (dataset['fold']==3) | (dataset['fold']==4)].kind.values,
+    image_names=dataset[(dataset['fold']==2) | (dataset['fold']==3) | (dataset['fold']==4)].image_name.values,
+    labels=dataset[(dataset['fold']==2) | (dataset['fold']==3) | (dataset['fold']==4)].label.values,
+    transforms=get_train_transforms(),
+)
 
 
 validation_dataset = DatasetRetriever(
@@ -181,8 +181,8 @@ def run_training():
 
     print(f"\n>>> Total training examples: {len(train_loader) * global_config.GPU_BATCH_SIZE}")
 
-    # net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
-    net = Pretrained_Model(device=device, config=global_config, steps=len(train_loader))
+    net = EfficientNet_Model(device=device, config=global_config, steps=len(train_loader))
+    # net = Pretrained_Model(device=device, config=global_config, steps=len(train_loader))
 
     # Continue training proc
     if global_config.CONTINUE_TRAIN:

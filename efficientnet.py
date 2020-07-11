@@ -119,23 +119,18 @@ class EfficientNet_Model:
 
     def fit(self, train_loader, validation_loader):
 
-        # Continue training proc -> Hand-tune LR 
-        if global_config.CONTINUE_TRAIN:
-
-            LR = [7e-5, 9e-5]
-
-            self.optimizer = torch.optim.AdamW([
-                        {'params': self.model.efn.parameters(),       'lr': LR[0]},
-                        {'params': self.model.fc1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.bn1.parameters(),       'lr': LR[1]},
-                        {'params': self.model.dense_out.parameters(), 'lr': LR[1]}
-                        ])
-            ############################################## 
-            self.scheduler = global_config.SchedulerClass(self.optimizer, **global_config.scheduler_params)
-            # APEX initialize -> FP16 training (half-precision)
-            self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O1", verbosity=1)
-
+        e_count = 0
         for e in range(self.config.GPU_EPOCH):
+
+            # Continue training proc -> Hand-tune LR 
+            if global_config.CONTINUE_TRAIN:
+                cur_LR = global_config.GPU_LR[0] * (0.6 ** e_count)
+                self.optimizer = torch.optim.AdamW([{'params': self.model.efn.parameters(), 'lr': cur_LR}])
+                ############################################## 
+                self.scheduler = global_config.SchedulerClass(self.optimizer, **global_config.scheduler_params)
+                # APEX initialize -> FP16 training (half-precision)
+                self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O1", verbosity=1)
+
 
             t = time.time()
             summary_loss, final_scores = self.train_one_epoch(train_loader)
@@ -154,8 +149,10 @@ class EfficientNet_Model:
 
             if summary_loss.avg < self.best_summary_loss:
                 self.best_summary_loss = summary_loss.avg
-                self.model.eval()
-                self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.pt')
+            
+            # save model of every epoch
+            self.model.eval()
+            self.save(f'{self.base_dir}/{global_config.SAVED_NAME}_{str(self.epoch).zfill(3)}ep.pt')
 
                 # keep only the best 3 checkpoints
                 # for path in sorted(glob(f'{self.base_dir}/{global_config.SAVED_NAME}_*ep.pt'))[:-3]:
@@ -168,6 +165,7 @@ class EfficientNet_Model:
                     self.scheduler.step()
                     
             self.epoch += 1
+            e_count += 1
 
     def validation(self, val_loader):
         self.model.eval()

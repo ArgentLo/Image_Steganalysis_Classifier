@@ -1,17 +1,17 @@
 import torch
 EfficientNet_Level = 'efficientnet-b7'
 
-SAVED_NAME = "PNasnet5Large"
+SAVED_NAME = "efficientnet_b7_NoWeight"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
-CLASS_WEIGHTS = [2, 1.0, 1.05, 0.95] # COVER : JMiPOD : JUNIWARD : UERD'
+CLASS_WEIGHTS = [1.0, 1.0, 1.0, 1.0] # COVER : JMiPOD : JUNIWARD : UERD'
 
 ########   GPU Apex Setting   ########
 
 FP16 = True # using APEX fp16
 GPU_BATCH_SIZE = 6
 GPU_EPOCH      = 40
-GPU_LR         = [1e-3, 1.5e-3] # [EffNet, HEAD]
+GPU_LR         = [2e-4, 1.5e-3] # [EffNet, HEAD]
 
 ########   XLA TPU Setting   #########
 
@@ -22,9 +22,9 @@ PRECISE_FTUNE  = False
 
 ########   XLA TPU Setting   #########
 
-CONTINUE_TRAIN =  False # "./checkpoints/last_ckpt.pt"
+CONTINUE_TRAIN =  "./checkpoints/b7_ClassWeight_019ep.pt"
 verbose = True
-verbose_step = 500
+verbose_step = 800
 
 # -------------------
 
