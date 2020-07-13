@@ -98,7 +98,7 @@ def run_inference():
 
         test_loader = DataLoader(
             testset,
-            batch_size=10,
+            batch_size=8,
             shuffle=False,
             num_workers=2,
             drop_last=False,
