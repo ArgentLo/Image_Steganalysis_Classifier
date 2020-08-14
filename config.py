@@ -1,5 +1,5 @@
 import torch
-EfficientNet_Level = 'efficientnet-b5'
+EfficientNet_Level = 'efficientnet-b7'
 
 SAVED_NAME = "efficientnet_b7_NoWeight"
 
