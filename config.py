@@ -1,6 +1,7 @@
 import torch
 EfficientNet_Level = 'efficientnet-b7'
 
+
 SAVED_NAME = "efficientnet_b7_NoWeight"
 
 LOSS_FN_LabelSmoothing = False # LabelSmoothing -> onehot; crossEnt: class_label
